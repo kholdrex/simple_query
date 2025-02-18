@@ -1,0 +1,68 @@
+module SimpleQuery
+  VERSION: String
+
+  class Builder
+    attr_reader model: untyped
+    attr_reader arel_table: Arel::Table
+    attr_reader selects: Array[untyped]
+    attr_reader wheres: Array[untyped]
+    attr_reader joins: Array[Hash[Symbol, untyped]]
+    attr_reader orders: Array[untyped]
+    attr_reader limits: Integer?
+    attr_reader offsets: Integer?
+
+    def initialize: (untyped source) -> void
+
+    def select: (*untyped fields) -> self
+
+    def where: (untyped condition) -> self
+
+    def join: (untyped table1, untyped table2, foreign_key: Symbol, primary_key: Symbol) -> self
+
+    def order: (Hash[Symbol, Symbol] order_conditions) -> self
+
+    def limit: (Integer n) -> self
+
+    def offset: (Integer n) -> self
+
+    def distinct: () -> self
+
+    def execute: () -> Array[untyped]
+
+    def lazy_execute: () -> Enumerator[untyped, void]
+
+    def build_query: () -> Arel::SelectManager
+
+    private
+
+    def reset_query: () -> void
+
+    def cached_sql: () -> String
+
+    def result_struct: (Array[String] columns) -> Class
+
+    def parse_select_field: (untyped field) -> untyped
+
+    def parse_where_condition: (untyped condition) -> Array[untyped]
+
+    def arel_table: (untyped table) -> Arel::Table
+
+    def parse_order_conditions: (Hash[Symbol, Symbol] order_conditions) -> Array[Arel::Nodes::Ascending | Arel::Nodes::Descending]
+
+    def validate_order_direction: (Symbol direction) -> void
+
+    def validate_positive_integer: (Integer n, String label) -> void
+
+    def validate_non_negative_integer: (Integer n, String label) -> void
+
+    def build_result_objects: (untyped records) -> Array[untyped]
+
+    def apply_where_conditions: () -> void
+
+    def apply_joins: () -> void
+
+    def apply_order_conditions: () -> void
+
+    def apply_limit_and_offset: () -> void
+  end
+end
