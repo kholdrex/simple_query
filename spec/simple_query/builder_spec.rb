@@ -221,6 +221,38 @@ RSpec.describe SimpleQuery::Builder do
     end
   end
 
+  describe "#map_to" do
+    it "instantiates the custom read model for each row" do
+      user = User.find_by(name: "Jane Doe")
+
+      result = User.simple_query
+                   .select("users.id AS id", "users.name AS name")
+                   .where(name: "Jane Doe")
+                   .map_to(MyUserReadModel)
+                   .execute
+
+      expect(result.size).to eq(1)
+      expect(result.first).to be_a(MyUserReadModel)
+      expect(result.first.identifier).to eq(user.id)
+      expect(result.first.full_name).to eq("Jane Doe")
+    end
+
+    it "works with lazy_execute as well" do
+      user = User.find_by(name: "John Smith")
+
+      lazy_enum = User.simple_query
+                      .select("users.id AS id", "users.name AS name")
+                      .where(name: "John Smith")
+                      .map_to(MyUserReadModel)
+                      .lazy_execute
+
+      record = lazy_enum.first
+      expect(record).to be_a(MyUserReadModel)
+      expect(record.identifier).to eq(user.id)
+      expect(record.full_name).to eq("John Smith")
+    end
+  end
+
   describe "Performance Test" do
     before do
       puts "\n⚡ Inserting 100,000 test records for benchmarking..."
@@ -267,20 +299,32 @@ RSpec.describe SimpleQuery::Builder do
         end
       end
 
-      simple_query_time = Benchmark.realtime do
+      simple_query_struct_time = Benchmark.realtime do
         ActiveRecord::Base.uncached do
           User.simple_query
-              .select(:name, :email)
+              .select(:name, :id)
               .join(:users, :companies, foreign_key: :user_id, primary_key: :id)
               .where(active: true).execute
         end
       end
 
-      puts "\n🚀 Performance Results (100,000 records):"
-      puts "ActiveRecord Query:        #{ar_time.round(5)} seconds"
-      puts "SimpleQuery Execution:      #{simple_query_time.round(5)} seconds"
+      simple_query_read_model_time = Benchmark.realtime do
+        ActiveRecord::Base.uncached do
+          User.simple_query
+              .select(:name, :id)
+              .join(:users, :companies, foreign_key: :user_id, primary_key: :id)
+              .where(active: true)
+              .map_to(MyUserReadModel)
+              .execute
+        end
+      end
 
-      expect(simple_query_time).to be < ar_time
+      puts "\n🚀 Performance Results (100,000 records):"
+      puts "ActiveRecord Query:                  #{ar_time.round(5)} seconds"
+      puts "SimpleQuery Execution (Struct):      #{simple_query_struct_time.round(5)} seconds"
+      puts "SimpleQuery Execution (Read model):  #{simple_query_read_model_time.round(5)} seconds"
+
+      expect(simple_query_struct_time).to be < ar_time
     end
   end
 end

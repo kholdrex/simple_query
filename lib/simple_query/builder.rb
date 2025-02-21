@@ -17,6 +17,7 @@ module SimpleQuery
       @query_cache = {}
       @result_struct = nil
       @query_built = false
+      @read_model_class = nil
     end
 
     def select(*fields)
@@ -68,6 +69,12 @@ module SimpleQuery
       self
     end
 
+    def map_to(klass)
+      @read_model_class = klass
+      reset_query
+      self
+    end
+
     def execute
       records = ActiveRecord::Base.connection.select_all(cached_sql)
       build_result_objects(records)
@@ -76,8 +83,14 @@ module SimpleQuery
     def lazy_execute
       Enumerator.new do |yielder|
         records = ActiveRecord::Base.connection.select_all(cached_sql)
-        struct = result_struct(records.columns)
-        records.rows.each { |row| yielder << struct.new(*row) }
+        if @read_model_class
+          records.each do |row_hash|
+            yielder << @read_model_class.build_from_row(row_hash)
+          end
+        else
+          struct = result_struct(records.columns)
+          records.rows.each { |row| yielder << struct.new(*row) }
+        end
       end
     end
 
@@ -86,6 +99,7 @@ module SimpleQuery
 
       @query = Arel::SelectManager.new(Arel::Table.engine)
       @query.from(@arel_table)
+
       @query.project(*(@selects.empty? ? [@arel_table[Arel.star]] : @selects))
       @query.distinct if @distinct_flag
 
@@ -107,6 +121,17 @@ module SimpleQuery
 
     def cached_sql
       @query_cache[@wheres] ||= build_query.to_sql
+    end
+
+    def build_result_objects(records)
+      if @read_model_class
+        records.map do |row_hash|
+          @read_model_class.build_from_row(row_hash)
+        end
+      else
+        struct = result_struct(records.columns)
+        records.rows.map { |row| struct.new(*row) }
+      end
     end
 
     def result_struct(columns)
@@ -156,18 +181,15 @@ module SimpleQuery
       raise ArgumentError, "#{label} must be a non-negative integer" unless number.is_a?(Integer) && number >= 0
     end
 
-    def build_result_objects(records)
-      struct = result_struct(records.columns)
-      records.rows.map { |row| struct.new(*row) }
-    end
-
     def apply_where_conditions
       @query.where(@wheres.inject(&:and)) if @wheres.any?
     end
 
     def apply_joins
       @joins.each do |join|
-        @query.join(join[:table2]).on(join[:table2][join[:foreign_key]].eq(join[:table1][join[:primary_key]]))
+        @query.join(join[:table2]).on(
+          join[:table2][join[:foreign_key]].eq(join[:table1][join[:primary_key]])
+        )
       end
     end
 
