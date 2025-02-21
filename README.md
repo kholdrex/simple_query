@@ -58,6 +58,32 @@ User.simple_query
     .lazy_execute
 ```
 
+## Custom Read Models
+By default, SimpleQuery returns results as `Struct` objects for maximum speed. However, you can also define a lightweight model class for more explicit attribute handling or custom logic.
+
+**Create a read model** inheriting from `SimpleQuery::ReadModel`:
+```ruby
+class MyUserReadModel < SimpleQuery::ReadModel
+  attribute :identifier, column: :id
+  attribute :full_name,  column: :name
+end
+```
+
+**Map query results** to your read model:
+```ruby
+results = User.simple_query
+              .select("users.id AS id", "users.name AS name")
+              .where(active: true)
+              .map_to(MyUserReadModel)
+              .execute
+
+results.each do |user|
+  puts user.identifier    # => user.id from the DB
+  puts user.full_name     # => user.name from the DB
+end
+```
+This custom read model approach provides more clarity or domain-specific logic while still being faster than typical ActiveRecord instantiation.
+
 ## Features
 
 - Efficient query building
@@ -68,6 +94,7 @@ User.simple_query
 - LIMIT and OFFSET
 - ORDER BY clause
 - Subqueries
+- Optional custom Read models
 
 ## Performance
 
@@ -75,9 +102,12 @@ SimpleQuery is designed to potentially outperform standard ActiveRecord queries 
 
 ```
 🚀 Performance Results (100,000 records):
-ActiveRecord Query:        0.43343 seconds
-SimpleQuery Execution:      0.06186 seconds
+ActiveRecord Query:                  0.47441 seconds
+SimpleQuery Execution (Struct):      0.05346 seconds
+SimpleQuery Execution (Read model):  0.14408 seconds
 ```
+- The **Struct-based** approach is the fastest. 
+- The **Read model** approach is still significantly faster than ActiveRecord, while letting you define custom logic or domain-specific attributes.
 
 ## Development
 
