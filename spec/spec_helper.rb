@@ -6,6 +6,8 @@ require "support/models/company"
 require "support/models/project"
 require "support/models/team"
 require "support/models/user"
+require "support/read_models/my_user_read_model"
+require "support/read_models/test_read_model"
 
 RSpec.configure do |config|
   config.before(:suite) do
