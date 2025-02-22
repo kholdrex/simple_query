@@ -1,6 +1,8 @@
 # frozen_string_literal: true
 
 class User < ActiveRecord::Base
+  include SimpleQuery
+
   has_many :companies
   has_many :projects, through: :companies
   has_and_belongs_to_many :teams
