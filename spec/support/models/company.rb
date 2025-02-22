@@ -16,10 +16,6 @@ class Company < ActiveRecord::Base
   scope :by_industry, ->(industry) { where(industry: industry) }
   scope :founded_after, ->(year) { where("founded_year > ?", year) }
 
-  # Enums
-  enum size: { small: 0, medium: 1, large: 2 }
-  enum status: { operational: 0, closed: 1, acquired: 2 }
-
   attr_accessor :temp_registration_code
 
   def age

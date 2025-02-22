@@ -19,8 +19,6 @@ class User < ActiveRecord::Base
   scope :admins, -> { where(admin: true) }
   scope :recent, -> { where("created_at > ?", 30.days.ago) }
 
-  enum status: { pending: 0, approved: 1, rejected: 2 }
-
   attr_accessor :temp_password
 
   def self.search(query)
