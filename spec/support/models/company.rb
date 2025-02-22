@@ -1,6 +1,8 @@
 # frozen_string_literal: true
 
 class Company < ActiveRecord::Base
+  include SimpleQuery
+
   belongs_to :user
   has_many :projects
 

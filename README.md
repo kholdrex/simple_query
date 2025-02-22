@@ -20,6 +20,30 @@ Or install it yourself as:
 gem install simple_query
 ```
 
+## Configuration
+
+By default, `SimpleQuery` does **not** automatically patch `ActiveRecord::Base`. You can **manually** include the module in individual models or in a global initializer:
+
+```ruby
+# Manual include (per model)
+class User < ActiveRecord::Base
+  include SimpleQuery
+end
+
+# or do it globally
+ActiveRecord::Base.include(SimpleQuery)
+```
+If you prefer a “just works” approach (i.e., every model has `.simple_query`), you can opt in:
+
+```ruby
+# config/initializers/simple_query.rb
+SimpleQuery.configure do |config|
+  config.auto_include_ar = true
+end
+```
+
+This tells SimpleQuery to automatically do `ActiveRecord::Base.include(SimpleQuery)` for you.
+
 ## Usage
 
 SimpleQuery offers an intuitive interface for building queries with joins, conditions, and aggregations. Here are some examples:
@@ -93,8 +117,9 @@ This custom read model approach provides more clarity or domain-specific logic w
 - Aggregations
 - LIMIT and OFFSET
 - ORDER BY clause
+- Having and Grouping
 - Subqueries
-- Optional custom Read models
+- Custom Read models
 
 ## Performance
 
