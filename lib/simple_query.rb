@@ -2,6 +2,7 @@
 
 require "active_record"
 require "simple_query/builder"
+require "simple_query/where_clause"
 require "simple_query/read_model"
 
 module SimpleQuery

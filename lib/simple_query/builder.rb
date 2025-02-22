@@ -8,7 +8,7 @@ module SimpleQuery
       @model = source
       @arel_table = @model.arel_table
       @selects = []
-      @wheres = []
+      @wheres = WhereClause.new(@arel_table)
       @joins = []
       @orders = []
       @limits = nil
@@ -27,7 +27,7 @@ module SimpleQuery
     end
 
     def where(condition)
-      @wheres.concat(parse_where_condition(condition))
+      @wheres.add(condition)
       reset_query
       self
     end
@@ -182,7 +182,8 @@ module SimpleQuery
     end
 
     def apply_where_conditions
-      @query.where(@wheres.inject(&:and)) if @wheres.any?
+      condition = @wheres.to_arel
+      @query.where(condition) if condition
     end
 
     def apply_joins
