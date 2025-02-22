@@ -2,22 +2,24 @@
 
 module SimpleQuery
   class Builder
-    attr_reader :model, :arel_table, :selects, :wheres, :joins, :orders, :limits, :offsets
+    attr_reader :model, :arel_table
 
     def initialize(source)
       @model = source
       @arel_table = @model.arel_table
+
       @selects = []
       @wheres = WhereClause.new(@arel_table)
-      @joins = []
-      @orders = []
-      @limits = nil
-      @offsets = nil
-      @distinct_flag = false
+      @joins = JoinClause.new
+      @group_having = GroupHavingClause.new(@arel_table)
+      @orders = OrderClause.new(@arel_table)
+      @limits = LimitOffsetClause.new
+      @distinct_flag = DistinctClause.new
+
       @query_cache = {}
-      @result_struct = nil
       @query_built = false
       @read_model_class = nil
+      @result_struct = nil
     end
 
     def select(*fields)
@@ -33,38 +35,43 @@ module SimpleQuery
     end
 
     def join(table1, table2, foreign_key:, primary_key:)
-      @joins << {
-        table1: arel_table(table1),
-        table2: arel_table(table2),
-        foreign_key: foreign_key,
-        primary_key: primary_key
-      }
+      @joins.add(table1, table2, foreign_key: foreign_key, primary_key: primary_key)
       reset_query
       self
     end
 
     def order(order_conditions)
-      @orders.concat(parse_order_conditions(order_conditions))
+      @orders.add(order_conditions)
       reset_query
       self
     end
 
     def limit(number)
-      validate_positive_integer(number, "LIMIT")
-      @limits = number
+      @limits.with_limit(number)
       reset_query
       self
     end
 
     def offset(number)
-      validate_non_negative_integer(number, "OFFSET")
-      @offsets = number
+      @limits.with_offset(number)
       reset_query
       self
     end
 
     def distinct
-      @distinct_flag = true
+      @distinct_flag.set_distinct
+      reset_query
+      self
+    end
+
+    def group(*fields)
+      @group_having.add_group(*fields)
+      reset_query
+      self
+    end
+
+    def having(condition)
+      @group_having.add_having(condition)
       reset_query
       self
     end
@@ -77,19 +84,19 @@ module SimpleQuery
 
     def execute
       records = ActiveRecord::Base.connection.select_all(cached_sql)
-      build_result_objects(records)
+      build_result_objects_from_rows(records)
     end
 
     def lazy_execute
       Enumerator.new do |yielder|
         records = ActiveRecord::Base.connection.select_all(cached_sql)
         if @read_model_class
-          records.each do |row_hash|
-            yielder << @read_model_class.build_from_row(row_hash)
-          end
+          build_read_models_enumerator(records, yielder)
         else
           struct = result_struct(records.columns)
-          records.rows.each { |row| yielder << struct.new(*row) }
+          records.rows.each do |row_array|
+            yielder << struct.new(*row_array)
+          end
         end
       end
     end
@@ -99,12 +106,12 @@ module SimpleQuery
 
       @query = Arel::SelectManager.new(Arel::Table.engine)
       @query.from(@arel_table)
-
       @query.project(*(@selects.empty? ? [@arel_table[Arel.star]] : @selects))
-      @query.distinct if @distinct_flag
 
+      apply_distinct
       apply_where_conditions
       apply_joins
+      apply_group_and_having
       apply_order_conditions
       apply_limit_and_offset
 
@@ -120,17 +127,55 @@ module SimpleQuery
     end
 
     def cached_sql
-      @query_cache[@wheres] ||= build_query.to_sql
+      key = [
+        @selects,
+        @wheres.conditions,
+        @joins.joins,
+        @group_having.group_fields,
+        @group_having.having_conditions,
+        @orders.orders,
+        @limits.limit_value,
+        @limits.offset_value,
+        @distinct_flag.use_distinct?
+      ]
+
+      @query_cache[key] ||= build_query.to_sql
     end
 
-    def build_result_objects(records)
+    def build_result_objects_from_rows(records)
       if @read_model_class
-        records.map do |row_hash|
-          @read_model_class.build_from_row(row_hash)
-        end
+        build_read_models_from_arrays(records)
       else
         struct = result_struct(records.columns)
-        records.rows.map { |row| struct.new(*row) }
+        records.rows.map { |row_array| struct.new(*row_array) }
+      end
+    end
+
+    def build_read_models_from_arrays(records)
+      columns = records.columns
+      column_map = columns.each_with_index.to_h
+      rows = records.rows
+
+      rows.map do |row_array|
+        obj = @read_model_class.allocate
+        @read_model_class.attributes.each do |attr_name, col_name|
+          idx = column_map[col_name]
+          obj.instance_variable_set(:"@#{attr_name}", row_array[idx]) if idx
+        end
+        obj
+      end
+    end
+
+    def build_read_models_enumerator(records, yielder)
+      columns = records.columns
+      column_map = columns.each_with_index.to_h
+      records.rows.each do |row_array|
+        obj = @read_model_class.allocate
+        @read_model_class.attributes.each do |attr_name, col_name|
+          idx = column_map[col_name]
+          obj.instance_variable_set(:"@#{attr_name}", row_array[idx]) if idx
+        end
+        yielder << obj
       end
     end
 
@@ -138,47 +183,8 @@ module SimpleQuery
       @result_struct ||= Struct.new(*columns.map(&:to_sym))
     end
 
-    def parse_select_field(field)
-      case field
-      when Symbol then @arel_table[field]
-      when String then Arel.sql(field)
-      when Arel::Nodes::Node then field
-      else
-        raise ArgumentError, "Unsupported select field type: #{field.class}"
-      end
-    end
-
-    def parse_where_condition(condition)
-      case condition
-      when Hash then condition.map { |field, value| @arel_table[field].eq(value) }
-      when Arel::Nodes::Node then [condition]
-      else [Arel.sql(condition.to_s)]
-      end
-    end
-
-    def arel_table(table)
-      table.is_a?(Arel::Table) ? table : Arel::Table.new(table)
-    end
-
-    def parse_order_conditions(order_conditions)
-      order_conditions.map do |field, direction|
-        validate_order_direction(direction)
-        @arel_table[field].send(direction)
-      end
-    end
-
-    def validate_order_direction(direction)
-      return if [:asc, :desc].include?(direction)
-
-      raise ArgumentError, "Invalid order direction: #{direction}. Use :asc or :desc."
-    end
-
-    def validate_positive_integer(number, label)
-      raise ArgumentError, "#{label} must be a positive integer" unless number.is_a?(Integer) && number.positive?
-    end
-
-    def validate_non_negative_integer(number, label)
-      raise ArgumentError, "#{label} must be a non-negative integer" unless number.is_a?(Integer) && number >= 0
+    def apply_distinct
+      @distinct_flag.apply_to(@query)
     end
 
     def apply_where_conditions
@@ -187,20 +193,32 @@ module SimpleQuery
     end
 
     def apply_joins
-      @joins.each do |join|
-        @query.join(join[:table2]).on(
-          join[:table2][join[:foreign_key]].eq(join[:table1][join[:primary_key]])
-        )
-      end
+      @joins.apply_to(@query)
+    end
+
+    def apply_group_and_having
+      @group_having.apply_to(@query)
     end
 
     def apply_order_conditions
-      @orders.each { |order| @query.order(order) }
+      @orders.apply_to(@query)
     end
 
     def apply_limit_and_offset
-      @query.take(@limits) if @limits
-      @query.skip(@offsets) if @offsets
+      @limits.apply_to(@query)
+    end
+
+    def parse_select_field(field)
+      case field
+      when Symbol
+        @arel_table[field]
+      when String
+        Arel.sql(field)
+      when Arel::Nodes::Node
+        field
+      else
+        raise ArgumentError, "Unsupported select field type: #{field.class}"
+      end
     end
   end
 end

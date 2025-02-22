@@ -110,6 +110,23 @@ RSpec.describe SimpleQuery::Builder do
       expect(result.first.total_revenue).to be_a(Numeric)
     end
 
+    it "supports GROUP BY and HAVING" do
+      result = Company.simple_query
+                      .select(:industry, Arel.sql("SUM(companies.annual_revenue) AS total_revenue"))
+                      .group(:industry)
+                      .having(Arel.sql("SUM(companies.annual_revenue) >= 500000"))
+                      .execute
+
+      industries = result.map(&:industry)
+      expect(industries).to contain_exactly("Technology", "Software")
+
+      tech_row = result.find { |r| r.industry == "Technology" }
+      soft_row = result.find { |r| r.industry == "Software" }
+
+      expect(tech_row.total_revenue.to_i).to eq(1_000_000)
+      expect(soft_row.total_revenue.to_i).to eq(500_000)
+    end
+
     it "supports LIMIT and OFFSET" do
       all_users = User.simple_query.select(:name).execute
       limited_users = User.simple_query.select(:name).limit(1).offset(1).execute
