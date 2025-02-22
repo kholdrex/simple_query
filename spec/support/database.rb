@@ -6,7 +6,7 @@ ActiveRecord::Base.establish_connection(
 )
 
 ActiveRecord::Schema.define do
-  create_table :users, force: true do |t|
+  create_table :users do |t|
     t.string :name
     t.string :email
     t.string :first_name
@@ -17,7 +17,7 @@ ActiveRecord::Schema.define do
     t.integer :status
   end
 
-  create_table :companies, force: true do |t|
+  create_table :companies do |t|
     t.string :name
     t.integer :user_id
     t.string :registration_number
@@ -30,13 +30,13 @@ ActiveRecord::Schema.define do
     t.string :slug
   end
 
-  create_table :projects, force: true do |t|
+  create_table :projects do |t|
     t.string :name
     t.integer :company_id
     t.string :status
   end
 
-  create_table :teams, force: true do |t|
+  create_table :teams do |t|
     t.string :name
   end
 
