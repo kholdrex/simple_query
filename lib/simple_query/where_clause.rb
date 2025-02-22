@@ -16,6 +16,7 @@ module SimpleQuery
 
     def to_arel
       return nil if @conditions.empty?
+
       @conditions.inject do |combined, current|
         combined.and(current)
       end
