@@ -23,7 +23,7 @@ Gem::Specification.new do |spec|
   spec.files         = Dir["lib/**/*", "LICENSE.txt", "README.md"]
   spec.require_paths = ["lib"]
 
-  spec.add_dependency "activerecord", ">= 5.0", "< 7.2"
+  spec.add_dependency "activerecord", ">= 7.0", "<= 8.0"
 
   spec.add_development_dependency "rake", "~> 13.0"
   spec.add_development_dependency "rspec", "~> 3.0"
