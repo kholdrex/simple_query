@@ -10,14 +10,14 @@ Gem::Specification.new do |spec|
 
   spec.summary       = "A lightweight and efficient query builder for ActiveRecord."
   spec.description   = "SimpleQuery provides a flexible and performant way to construct complex database queries in Ruby on Rails applications. It offers an intuitive interface for building queries with joins, conditions, and aggregations, while potentially outperforming standard ActiveRecord queries on large datasets."
-  spec.homepage      = "https://oneruby.dev"
+  spec.homepage      = "https://github.com/kholdrex/simple_query"
   spec.license       = "MIT"
   spec.required_ruby_version = ">= 2.7.0"
 
   spec.metadata = {
     "homepage_uri" => spec.homepage,
     "source_code_uri" => "https://github.com/kholdrex/simple_query",
-    "changelog_uri" => "https://github.com/kholdrex/simple_query/blob/main/CHANGELOG.md"
+    "changelog_uri" => "https://github.com/kholdrex/simple_query/blob/master/CHANGELOG.md"
   }
 
   spec.files         = Dir["lib/**/*", "LICENSE.txt", "README.md"]
