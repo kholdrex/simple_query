@@ -36,6 +36,27 @@ module SimpleQuery
     ActiveRecord::Base.include(SimpleQuery)
   end
 
+  class_methods do
+    def _simple_scopes
+      @_simple_scopes ||= {}
+    end
+
+    # A reusable scope that can be applied to a SimpleQuery::Builder instance
+    # Example:
+    #   simple_scope :active do
+    #     where(active: true)
+    #   end
+    #
+    # Parameterized scope:
+    #   simple_scope :by_name do |name|
+    #     where(name: name)
+    #   end
+    #
+    def simple_scope(name, &block)
+      _simple_scopes[name.to_sym] = block
+    end
+  end
+
   included do
     def self.simple_query
       Builder.new(self)

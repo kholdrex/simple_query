@@ -19,6 +19,18 @@ class User < ActiveRecord::Base
   scope :admins, -> { where(admin: true) }
   scope :recent, -> { where("created_at > ?", 30.days.ago) }
 
+  simple_scope :active do
+    where(active: true)
+  end
+
+  simple_scope :admins do
+    where(admin: true)
+  end
+
+  simple_scope :by_name do |name|
+    where(name: name)
+  end
+
   attr_accessor :temp_password
 
   def self.search(query)
