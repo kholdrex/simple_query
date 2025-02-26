@@ -222,7 +222,7 @@ module SimpleQuery
     end
 
     def method_missing(method_name, *args, &block)
-      if scope_block = find_scope(method_name)
+      if (scope_block = find_scope(method_name))
         instance_exec(*args, &scope_block)
         self
       else
@@ -236,6 +236,7 @@ module SimpleQuery
 
     def find_scope(method_name)
       return unless model.respond_to?(:_simple_scopes)
+
       model._simple_scopes[method_name.to_sym]
     end
   end
