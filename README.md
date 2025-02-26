@@ -108,6 +108,48 @@ end
 ```
 This custom read model approach provides more clarity or domain-specific logic while still being faster than typical ActiveRecord instantiation.
 
+## Named Scopes
+SimpleQuery now supports named scopes, allowing you to reuse common query logic in a style similar to ActiveRecord’s built-in scopes. To define a scope, use the simple_scope class method in your model:
+```ruby
+class User < ActiveRecord::Base
+  include SimpleQuery
+
+  simple_scope :active do
+    where(active: true)
+  end
+
+  simple_scope :admins do
+    where(admin: true)
+  end
+
+  simple_scope :by_name do |name|
+    where(name: name)
+  end
+end
+```
+You can then chain these scopes seamlessly with the normal SimpleQuery DSL:
+
+```ruby
+# Parameterless scopes
+results = User.simple_query.active.admins.execute
+
+# Parameterized scope
+results = User.simple_query.by_name("Jane Doe").execute
+
+# Mixing scopes with other DSL calls
+results = User.simple_query
+              .by_name("John")
+              .active
+              .select(:id, :name)
+              .order(name: :asc)
+              .execute
+```
+### How It Works
+
+Each scope block (e.g. by_name) is evaluated in the context of the SimpleQuery builder, so you can call any DSL method (where, order, etc.) inside it.
+Parameterized scopes accept arguments — passed directly to the block (e.g. |name| above).
+Scopes return self, so you can chain multiple scopes or mix them with standard query methods.
+
 ## Features
 
 - Efficient query building
@@ -120,6 +162,7 @@ This custom read model approach provides more clarity or domain-specific logic w
 - Having and Grouping
 - Subqueries
 - Custom Read models
+- Named Scopes
 
 ## Performance
 

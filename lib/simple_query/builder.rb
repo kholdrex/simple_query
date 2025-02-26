@@ -220,5 +220,23 @@ module SimpleQuery
         raise ArgumentError, "Unsupported select field type: #{field.class}"
       end
     end
+
+    def method_missing(method_name, *args, &block)
+      if scope_block = find_scope(method_name)
+        instance_exec(*args, &scope_block)
+        self
+      else
+        super
+      end
+    end
+
+    def respond_to_missing?(method_name, include_private = false)
+      !!find_scope(method_name) || super
+    end
+
+    def find_scope(method_name)
+      return unless model.respond_to?(:_simple_scopes)
+      model._simple_scopes[method_name.to_sym]
+    end
   end
 end

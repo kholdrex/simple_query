@@ -270,6 +270,50 @@ RSpec.describe SimpleQuery::Builder do
     end
   end
 
+  describe "Scopes" do
+    it "filters records by a parameterless scope (active)" do
+      # The 'Inactive Guy' should not appear in results
+      results = User.simple_query.active.execute
+      expect(results.map(&:name)).to contain_exactly("Jane Doe", "John Smith")
+    end
+
+    it "filters records by another parameterless scope (admins)" do
+      # Only Jane Doe is admin => see above seed data
+      results = User.simple_query.admins.execute
+      expect(results.map(&:name)).to eq(["Jane Doe"])
+    end
+
+    it "handles parameterized scope" do
+      # We search by name using the by_name scope
+      results = User.simple_query.by_name("John Smith").execute
+      expect(results.map(&:name)).to eq(["John Smith"])
+    end
+
+    it "chains multiple scopes" do
+      # 'Jane Doe' is both active and an admin
+      # 'John Smith' is active but not an admin
+      results = User.simple_query.active.admins.execute
+      expect(results.map(&:name)).to eq(["Jane Doe"])
+    end
+
+    it "chains scopes with additional DSL methods" do
+      # Filter by :by_name, then check if it's active, and then select
+      results = User.simple_query
+                    .by_name("Jane Doe")
+                    .active
+                    .select(:name, :admin)
+                    .execute
+      expect(results.size).to eq(1)
+      expect(results.first.name).to eq("Jane Doe")
+    end
+
+    it "returns an empty set if scope excludes all records" do
+      # We look for someone who doesn't exist
+      results = User.simple_query.by_name("Nonexistent").execute
+      expect(results).to be_empty
+    end
+  end
+
   describe "Performance Test" do
     before do
       puts "\n⚡ Inserting 100,000 test records for benchmarking..."
