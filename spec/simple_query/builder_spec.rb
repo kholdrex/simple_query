@@ -169,6 +169,17 @@ RSpec.describe SimpleQuery::Builder do
       expect(result.first).to be_an(Struct)
       expect(result.first.name).to eq("Jane Doe")
     end
+
+    it "supports complex where clauses" do
+      result = Company.simple_query
+                      .where([
+                               "industry = :industry AND annual_revenue <= :max_annual_revenue",
+                               { industry: "Software", max_annual_revenue: 500_000 }
+                             ])
+                      .execute
+
+      expect(result.size).to eq(1)
+    end
   end
 
   describe "#lazy_execute" do
