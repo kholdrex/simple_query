@@ -2,6 +2,24 @@
 
 All notable changes to this project are documented in this file.
 
+## [0.3.1] - 2025-02-26
+
+### Added
+- **Placeholder-Based Conditions**
+  - Introduced support for **ActiveRecord-style** placeholders in `.where`:
+    ```ruby
+      where(["email = ?", "test@example.com"])
+      where(["name LIKE :name", { name: "%Bob%" }])
+    ```
+  - Internally uses `sanitize_sql_array` for safe SQL quoting.
+  - New RSpec tests verify both **positional** (`?`) and **named** (`:name`) placeholders.
+
+### Notes
+- This is a **minor** update to `0.3.0`, preserving backwards compatibility.
+- See the README’s “Placeholder-Based Conditions” section for usage examples.
+
+---
+
 ## [0.3.0] - 2025-02-25
 
 ### Added
