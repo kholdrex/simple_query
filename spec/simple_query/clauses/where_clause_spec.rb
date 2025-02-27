@@ -27,6 +27,37 @@ RSpec.describe SimpleQuery::WhereClause do
     it "handles a string" do
       where_clause.add("users.deleted_at IS NULL")
       expect(where_clause.conditions.size).to eq(1)
+      expect(where_clause.conditions.first.to_s).to include("users.deleted_at IS NULL")
+    end
+
+    context "with placeholder arrays" do
+      it "handles positional placeholders" do
+        where_clause.add(["name LIKE ?", "%John%"])
+        expect(where_clause.conditions.size).to eq(1)
+
+        sql_node = where_clause.conditions.first
+        expect(sql_node).to be_a(Arel::Nodes::SqlLiteral)
+        expect(sql_node.to_s).to match(/name LIKE '%John%'/)
+      end
+
+      it "handles named placeholders" do
+        where_clause.add(["email = :email", { email: "john@example.com" }])
+        expect(where_clause.conditions.size).to eq(1)
+
+        sql_node = where_clause.conditions.first
+        expect(sql_node).to be_a(Arel::Nodes::SqlLiteral)
+        expect(sql_node.to_s).to match(/email = 'john@example.com'/)
+      end
+
+      it "handles multiple placeholders in one condition" do
+        where_clause.add(["id >= :min_id AND name LIKE :name", { min_id: 100, name: "%Jane%" }])
+        expect(where_clause.conditions.size).to eq(1)
+
+        sql_node = where_clause.conditions.first
+        expect(sql_node).to be_a(Arel::Nodes::SqlLiteral)
+        expect(sql_node.to_s).to match(/id >= 100/)
+        expect(sql_node.to_s).to match(/name LIKE '%Jane%'/)
+      end
     end
   end
 

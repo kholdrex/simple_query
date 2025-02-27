@@ -30,6 +30,9 @@ module SimpleQuery
         condition.map { |field, value| @table[field].eq(value) }
       when Arel::Nodes::Node
         [condition]
+      when Array
+        sanitized_sql = ActiveRecord::Base.send(:sanitize_sql_array, condition)
+        [Arel.sql(sanitized_sql)]
       else
         [Arel.sql(condition.to_s)]
       end

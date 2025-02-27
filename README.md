@@ -82,6 +82,27 @@ User.simple_query
     .lazy_execute
 ```
 
+Placeholder-Based Conditions
+
+SimpleQuery now supports **ActiveRecord-style placeholders**, letting you pass arrays with `?` or `:named` placeholders to your `.where` clauses:
+
+```ruby
+# Positional placeholders:
+User.simple_query
+    .where(["name LIKE ?", "%Alice%"])
+    .execute
+
+# Named placeholders:
+User.simple_query
+    .where(["email = :email", { email: "alice@example.com" }])
+    .execute
+
+# Multiple placeholders in one condition:
+User.simple_query
+    .where(["age >= :min_age AND age <= :max_age", { min_age: 18, max_age: 35 }])
+    .execute
+```
+
 ## Custom Read Models
 By default, SimpleQuery returns results as `Struct` objects for maximum speed. However, you can also define a lightweight model class for more explicit attribute handling or custom logic.
 
