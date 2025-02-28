@@ -41,19 +41,13 @@ module SimpleQuery
       @_simple_scopes ||= {}
     end
 
-    # A reusable scope that can be applied to a SimpleQuery::Builder instance
-    # Example:
-    #   simple_scope :active do
-    #     where(active: true)
-    #   end
-    #
-    # Parameterized scope:
-    #   simple_scope :by_name do |name|
-    #     where(name: name)
-    #   end
-    #
-    def simple_scope(name, &block)
-      _simple_scopes[name.to_sym] = block
+    def simple_scope(name, body = nil, &block)
+      raise ArgumentError, "Pass either a proc/lambda or a block, not both" if body && block_given?
+
+      scope_body = body || block
+      raise ArgumentError, "You must provide a block or a proc" unless scope_body
+
+      _simple_scopes[name.to_sym] = scope_body
     end
   end
 

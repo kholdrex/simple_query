@@ -323,6 +323,11 @@ RSpec.describe SimpleQuery::Builder do
       results = User.simple_query.by_name("Nonexistent").execute
       expect(results).to be_empty
     end
+
+    it "supports lambda scopes with complex conditions" do
+      results = Company.simple_query.active.founded_after(2012).execute
+      expect(results.size).to eq(1)
+    end
   end
 
   describe "Performance Test" do
