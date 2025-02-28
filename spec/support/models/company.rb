@@ -16,6 +16,9 @@ class Company < ActiveRecord::Base
   scope :by_industry, ->(industry) { where(industry: industry) }
   scope :founded_after, ->(year) { where("founded_year > ?", year) }
 
+  simple_scope :active, -> { where(active: true) }
+  simple_scope :founded_after, ->(year) { where(["founded_year > ?", year]) }
+
   attr_accessor :temp_registration_code
 
   def age

@@ -143,9 +143,13 @@ class User < ActiveRecord::Base
     where(admin: true)
   end
 
+  # Block-based scope with parameter
   simple_scope :by_name do |name|
     where(name: name)
   end
+
+  # Lambda-based scope with parameter
+  simple_scope :by_name, ->(name) { where(name: name) }
 end
 ```
 You can then chain these scopes seamlessly with the normal SimpleQuery DSL:
