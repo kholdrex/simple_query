@@ -2,6 +2,21 @@
 
 All notable changes to this project are documented in this file.
 
+## [0.3.2] - 2025-02-28
+
+### Added
+- **Extended Join Types**
+  - Introduced `.left_join`, `.right_join`, and `.full_join` DSL methods, each calling the existing `.join(..., type: ...)` under the hood.
+  - Fallback logic for older Arel versions that do not define `RightOuterJoin`, `FullOuterJoin`. In those cases, SimpleQuery uses either a raw approach or reverts to `INNER JOIN` (for Right/Full).
+- **Improved DSL Consistency**
+  - Users can now specify more precise join behaviors (LEFT OUTER, RIGHT OUTER, FULL OUTER) without manual `type: :left` arguments.
+
+### Notes
+- This version remains backward-compatible with previous 0.3.x versions.
+- Database / Arel support for `RIGHT` or `FULL` join may be limited in MySQL < 8.x or older frameworks. SimpleQuery will gracefully fallback to `INNER JOIN` if the underlying Arel node is undefined.
+
+---
+
 ## [0.3.1] - 2025-02-26
 
 ### Added
