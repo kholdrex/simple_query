@@ -54,11 +54,12 @@ User.simple_query.select(:name, :email).where(active: true).execute
 ```
 
 Query with join
+
+SimpleQuery now supports **all major SQL join types** — including LEFT, RIGHT, and FULL — through the following DSL methods:
 ```ruby
 User.simple_query
-    .select(:name, :email)
-    .join(:users, :companies, foreign_key: :user_id, primary_key: :id)
-    .where(Company.arel_table[:name].eq("TechCorp"))
+    .left_join(:users, :companies, foreign_key: :user_id, primary_key: :id)
+    .select("users.name", "companies.name")
     .execute
 ```
 
