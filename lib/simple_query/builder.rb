@@ -34,10 +34,22 @@ module SimpleQuery
       self
     end
 
-    def join(table1, table2, foreign_key:, primary_key:)
-      @joins.add(table1, table2, foreign_key: foreign_key, primary_key: primary_key)
+    def join(table1, table2, foreign_key:, primary_key:, type: :inner)
+      @joins.add(table1, table2, foreign_key: foreign_key, primary_key: primary_key, join_type: type)
       reset_query
       self
+    end
+
+    def left_join(table1, table2, foreign_key:, primary_key:)
+      join(table1, table2, foreign_key: foreign_key, primary_key: primary_key, type: :left)
+    end
+
+    def right_join(table1, table2, foreign_key:, primary_key:)
+      join(table1, table2, foreign_key: foreign_key, primary_key: primary_key, type: :right)
+    end
+
+    def full_join(table1, table2, foreign_key:, primary_key:)
+      join(table1, table2, foreign_key: foreign_key, primary_key: primary_key, type: :full)
     end
 
     def order(order_conditions)

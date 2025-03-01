@@ -68,6 +68,38 @@ RSpec.describe SimpleQuery::Builder do
       expect(result.first.name).to eq("Jane Doe")
     end
 
+    it "defaults to INNER JOIN if no type is provided" do
+      sql = query_object
+            .join(:users, :companies, foreign_key: :user_id, primary_key: :id)
+            .build_query
+            .to_sql
+      expect(sql).to match(/INNER JOIN "?companies"? ON "?companies"?\."?user_id"? = "?users"?\."?id"?/i)
+    end
+
+    it "supports left_join" do
+      sql = query_object
+            .left_join(:users, :companies, foreign_key: :user_id, primary_key: :id)
+            .build_query
+            .to_sql
+      expect(sql).to match(/LEFT OUTER JOIN "?companies"? ON "?companies"?\."?user_id"? = "?users"?\."?id"?/i)
+    end
+
+    it "supports right_join" do
+      sql = query_object
+            .right_join(:users, :companies, foreign_key: :user_id, primary_key: :id)
+            .build_query
+            .to_sql
+      expect(sql).to match(/RIGHT OUTER JOIN "?companies"? ON "?companies"?\."?user_id"? = "?users"?\."?id"?/i)
+    end
+
+    it "supports full_join" do
+      sql = query_object
+            .full_join(:users, :companies, foreign_key: :user_id, primary_key: :id)
+            .build_query
+            .to_sql
+      expect(sql).to match(/FULL OUTER JOIN "?companies"? ON "?companies"?\."?user_id"? = "?users"?\."?id"?/i)
+    end
+
     it "supports DISTINCT queries" do
       User.create(name: "Jane Doe", email: "jane2@example.com")
       result = User.simple_query
