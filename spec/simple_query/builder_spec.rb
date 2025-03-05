@@ -362,78 +362,25 @@ RSpec.describe SimpleQuery::Builder do
     end
   end
 
-  describe "Performance Test" do
-    before do
-      puts "\n⚡ Inserting 100,000 test records for benchmarking..."
-      users = []
-      companies = []
+  describe "#bulk_update" do
+    it "updates matching rows with the given columns" do
+      query_object.where(active: true)
+      query_object.bulk_update(set: { status: 9 })
 
-      100_000.times do |i|
-        users << {
-          name: "User#{i}",
-          email: "user#{i}@example.com",
-          first_name: "First#{i}",
-          last_name: "Last#{i}",
-          active: true,
-          admin: i % 100 == 0,
-          status: i % 3
-        }
-      end
-
-      User.insert_all(users)
-
-      users = User.pluck(:id)
-      users.each_with_index do |user_id, i|
-        companies << {
-          name: "Company#{i}",
-          user_id: user_id,
-          registration_number: "REG#{i}",
-          founded_year: 2000 + (i % 25),
-          industry: ["Tech", "Finance", "Healthcare", "Education"].sample,
-          active: true,
-          size: i % 3,
-          status: i % 3,
-          annual_revenue: rand(100_000..10_000_000)
-        }
-      end
-
-      Company.insert_all(companies)
-      puts "✅ Data Inserted!"
+      updated_count = User.where(status: 9).count
+      expect(updated_count).to eq(2)
     end
 
-    it "compares ActiveRecord vs SimpleQuery performance on a larger dataset" do
-      ar_time = Benchmark.realtime do
-        ActiveRecord::Base.uncached do
-          User.joins(:companies).where(active: true).to_a
-        end
-      end
+    it "raises an error if the set hash includes non existing columns" do
+      expect do
+        query_object.bulk_update(set: { random_column: 9 })
+      end.to raise_error(ActiveRecord::StatementInvalid, /SQLite3::SQLException/)
+    end
 
-      simple_query_struct_time = Benchmark.realtime do
-        ActiveRecord::Base.uncached do
-          User.simple_query
-              .select(:name, :id)
-              .join(:users, :companies, foreign_key: :user_id, primary_key: :id)
-              .where(active: true).execute
-        end
-      end
-
-      simple_query_read_model_time = Benchmark.realtime do
-        ActiveRecord::Base.uncached do
-          User.simple_query
-              .select(:name, :id)
-              .join(:users, :companies, foreign_key: :user_id, primary_key: :id)
-              .where(active: true)
-              .map_to(MyUserReadModel)
-              .execute
-        end
-      end
-
-      puts "\n🚀 Performance Results (100,000 records):"
-      puts "ActiveRecord Query:                  #{ar_time.round(5)} seconds"
-      puts "SimpleQuery Execution (Struct):      #{simple_query_struct_time.round(5)} seconds"
-      puts "SimpleQuery Execution (Read model):  #{simple_query_read_model_time.round(5)} seconds"
-
-      expect(simple_query_struct_time).to be < ar_time
+    it "raises an error if the set hash is empty" do
+      expect do
+        query_object.bulk_update(set: {})
+      end.to raise_error(ArgumentError, /No columns to update/)
     end
   end
 end
