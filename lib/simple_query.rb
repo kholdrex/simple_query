@@ -11,6 +11,7 @@ require_relative "simple_query/clauses/order_clause"
 require_relative "simple_query/clauses/distinct_clause"
 require_relative "simple_query/clauses/limit_offset_clause"
 require_relative "simple_query/clauses/group_having_clause"
+require_relative "simple_query/clauses/set_clause"
 
 module SimpleQuery
   extend ActiveSupport::Concern

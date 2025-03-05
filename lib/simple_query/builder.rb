@@ -94,6 +94,19 @@ module SimpleQuery
       self
     end
 
+    def bulk_update(set:)
+      table_name = @arel_table.name
+      set_sql = SetClause.new(set).to_sql
+
+      raise ArgumentError, "No columns to update" if set_sql.empty?
+
+      where_sql = build_where_sql
+      sql = "UPDATE #{table_name} SET #{set_sql}"
+      sql += " WHERE #{where_sql}" unless where_sql.nil? || where_sql.empty?
+
+      ActiveRecord::Base.connection.execute(sql)
+    end
+
     def execute
       records = ActiveRecord::Base.connection.select_all(cached_sql)
       build_result_objects_from_rows(records)
@@ -132,6 +145,13 @@ module SimpleQuery
     end
 
     private
+
+    def build_where_sql
+      condition = @wheres.to_arel
+      return "" unless condition
+
+      condition.to_sql
+    end
 
     def reset_query
       @query_built = false
