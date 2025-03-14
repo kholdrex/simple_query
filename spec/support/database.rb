@@ -7,11 +7,11 @@ password  = ENV["DB_PASSWORD"]
 database  = ENV.fetch("DB_DATABASE", ":memory:")
 
 ActiveRecord::Base.establish_connection(
-  adapter:   adapter,
-  host:      host,
-  username:  username,
-  password:  password,
-  database:  database
+  adapter: adapter,
+  host: host,
+  username: username,
+  password: password,
+  database: database
 )
 
 ActiveRecord::Schema.define do
