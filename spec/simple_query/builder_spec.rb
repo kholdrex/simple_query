@@ -374,7 +374,7 @@ RSpec.describe SimpleQuery::Builder do
     it "raises an error if the set hash includes non existing columns" do
       expect do
         query_object.bulk_update(set: { random_column: 9 })
-      end.to raise_error(ActiveRecord::StatementInvalid, /SQLite3::SQLException/)
+      end.to raise_error(ActiveRecord::StatementInvalid, /random_column/)
     end
 
     it "raises an error if the set hash is empty" do

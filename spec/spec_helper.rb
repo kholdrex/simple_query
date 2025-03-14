@@ -20,4 +20,8 @@ RSpec.configure do |config|
       raise ActiveRecord::Rollback
     end
   end
+
+  config.before(:all) do
+    [User, Company, Project, Team].each(&:delete_all)
+  end
 end
