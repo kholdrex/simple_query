@@ -99,5 +99,17 @@ RSpec.describe SimpleQuery::Builder do
       rows_updated_sq = User.where(status: 2).count
       expect(rows_updated_ar).to eq(rows_updated_sq)
     end
+
+    it "yields all matching rows without loading them all into memory" do
+      query_object.where(active: true)
+
+      row_count = 0
+      query_object.stream_each(batch_size: 500) do |row|
+        row_count += 1
+      end
+
+      expected = query_object.where(active: true).count
+      expect(row_count).to eq(expected)
+    end
   end
 end
