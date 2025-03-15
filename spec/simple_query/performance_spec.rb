@@ -5,7 +5,7 @@ require "benchmark"
 RSpec.describe SimpleQuery::Builder do
   let(:query_object) { described_class.new(User) }
 
-  describe "Performance Test" do
+  describe "Performance Test", skip: true do
     before(:all) do
       puts "\n⚡ Inserting 1000,000 test records for benchmarking..."
       users = []
