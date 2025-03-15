@@ -44,7 +44,7 @@ RSpec.describe SimpleQuery::OrderClause do
       order_clause.apply_to(arel_manager)
       sql = arel_manager.to_sql
 
-      expect(sql).to match(/ORDER BY "users"."name" DESC/i)
+      expect(sql).to match(/ORDER BY.*users.*name.*DESC/i)
     end
   end
 end

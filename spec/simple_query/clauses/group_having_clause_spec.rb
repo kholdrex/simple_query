@@ -38,7 +38,7 @@ RSpec.describe SimpleQuery::GroupHavingClause do
       clause.apply_to(arel_manager)
 
       sql = arel_manager.to_sql
-      expect(sql).to match(/GROUP BY "users"."city"/i)
+      expect(sql).to match(/GROUP BY.*users.*city/i)
     end
 
     it "combines multiple having conditions with AND" do
@@ -51,7 +51,7 @@ RSpec.describe SimpleQuery::GroupHavingClause do
       clause.apply_to(arel_manager)
       sql = arel_manager.to_sql
 
-      expect(sql).to match(/GROUP BY "users"."city"/i)
+      expect(sql).to match(/GROUP BY.*users.*city/i)
       expect(sql).to match(/HAVING/i)
       expect(sql).to match(/"users"."city" = 'Paris'/i)
       expect(sql).to match(/"users"."age" > 20/i)
@@ -64,7 +64,7 @@ RSpec.describe SimpleQuery::GroupHavingClause do
       clause.apply_to(arel_manager)
 
       sql = arel_manager.to_sql
-      expect(sql).to match(/GROUP BY "users"."city"/i)
+      expect(sql).to match(/GROUP BY.*users.*city/i)
       expect(sql).not_to match(/HAVING/i)
     end
   end

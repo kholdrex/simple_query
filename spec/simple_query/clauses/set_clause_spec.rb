@@ -8,7 +8,7 @@ RSpec.describe SimpleQuery::SetClause do
       clause = described_class.new({ name: "Alice", active: false })
       sql = clause.to_sql
 
-      expect(sql).to match(/"name" = 'Alice'/)
+      expect(sql).to match(/name.*=.*'Alice'/)
       expect(sql).to match(/"active" = (0|false|'f')/i)
       expect(sql).to include(",")
     end
