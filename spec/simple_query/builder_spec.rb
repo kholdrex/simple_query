@@ -383,4 +383,35 @@ RSpec.describe SimpleQuery::Builder do
       end.to raise_error(ArgumentError, /No columns to update/)
     end
   end
+
+  describe "#stream_each" do
+    context "when adapter is postgres" do
+      it "calls stream_each_postgres" do
+        builder = described_class.new(User)
+        allow(ActiveRecord::Base.connection).to receive(:adapter_name).and_return("PostgreSQL")
+
+        expect(builder).to receive(:stream_each_postgres).with(500).and_return(nil)
+        builder.stream_each(batch_size: 500) { |row| }
+      end
+    end
+
+    context "when adapter is mysql" do
+      it "calls stream_each_mysql" do
+        builder = described_class.new(User)
+        allow(ActiveRecord::Base.connection).to receive(:adapter_name).and_return("MySQL")
+
+        expect(builder).to receive(:stream_each_mysql).and_return(nil)
+        builder.stream_each { |row| }
+      end
+    end
+
+    context "when adapter is neither" do
+      it "raises an error" do
+        builder = described_class.new(User)
+        allow(ActiveRecord::Base.connection).to receive(:adapter_name).and_return("Sqlite")
+
+        expect { builder.stream_each }.to raise_error("stream_each is only implemented for Postgres and MySQL.")
+      end
+    end
+  end
 end

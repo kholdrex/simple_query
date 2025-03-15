@@ -176,19 +176,22 @@ Each scope block (e.g. by_name) is evaluated in the context of the SimpleQuery b
 Parameterized scopes accept arguments — passed directly to the block (e.g. |name| above).
 Scopes return self, so you can chain multiple scopes or mix them with standard query methods.
 
-## Features
+## Streaming Large Datasets
 
-- Efficient query building
-- Support for complex joins
-- Lazy execution
-- DISTINCT queries
-- Aggregations
-- LIMIT and OFFSET
-- ORDER BY clause
-- Having and Grouping
-- Subqueries
-- Custom Read models
-- Named Scopes
+For massive queries (millions of rows), **SimpleQuery** offers a `.stream_each` method to avoid loading the entire result set into memory. It **automatically** picks a streaming approach depending on your database adapter:
+
+- **PostgreSQL**: Uses a **server-side cursor** via `DECLARE ... FETCH`.
+- **MySQL**: Uses `mysql2` gem’s **streaming** (`stream: true, cache_rows: false, as: :hash`).
+
+```ruby
+# Example usage:
+User.simple_query
+    .where(active: true)
+    .stream_each(batch_size: 10_000) do |row|
+  # row is a struct or read-model instance
+  puts row.name
+end
+```
 
 ## Performance
 

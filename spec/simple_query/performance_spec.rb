@@ -1,9 +1,12 @@
 # frozen_string_literal: true
 
 require "benchmark"
+require "memory_profiler"
 
 RSpec.describe SimpleQuery::Builder do
   let(:query_object) { described_class.new(User) }
+  let(:active_scope) { User.where(active: true) }
+  let(:sq_query)     { User.simple_query.where(active: true) }
 
   describe "Performance Test", skip: true do
     before(:all) do
@@ -100,15 +103,73 @@ RSpec.describe SimpleQuery::Builder do
       expect(rows_updated_ar).to eq(rows_updated_sq)
     end
 
+    it "compares AR find_each vs SimpleQuery stream_each" do
+      total = User.where(active: true).count
+      puts "\n👉 Testing streaming with ~#{total} rows..."
+
+      ar_stream_time = Benchmark.realtime do
+        row_count = 0
+        User.where(active: true).find_each(batch_size: 10_000) do |_u|
+          row_count += 1
+        end
+      end
+
+      sq_stream_time = Benchmark.realtime do
+        row_count = 0
+        query_object.where(active: true).stream_each(batch_size: 10_000) do |_row|
+          row_count += 1
+        end
+      end
+
+      puts "\n--- Streaming Benchmark ---"
+      puts "ActiveRecord find_each:         #{ar_stream_time.round(5)} seconds"
+      puts "SimpleQuery stream_each:        #{sq_stream_time.round(5)} seconds"
+    end
+
+    it "compares memory usage of AR find_each vs. SimpleQuery stream_each" do
+      ar_report = MemoryProfiler.report do
+        row_count_ar = 0
+        active_scope.find_each(batch_size: 100_000) do |_u|
+          row_count_ar += 1
+        end
+      end
+
+      puts "\n--- AR find_each Memory Report ---"
+      ar_report.pretty_print(
+        scale_bytes: true,
+        normalize_paths: true,
+        detailed_report: false
+      )
+
+      sq_report = MemoryProfiler.report do
+        row_count_sq = 0
+        sq_query.stream_each(batch_size: 100_000) do |_row|
+          row_count_sq += 1
+        end
+      end
+
+      puts "\n--- SimpleQuery stream_each Memory Report ---"
+      sq_report.pretty_print(
+        scale_bytes: true,
+        normalize_paths: true,
+        detailed_report: false
+      )
+
+      puts "\nAR find_each => total allocated: #{ar_report.total_allocated}"
+      puts "SQ stream_each => total allocated: #{sq_report.total_allocated}"
+
+      expect(sq_report.total_allocated).to be < ar_report.total_allocated * 1.1
+    end
+
     it "yields all matching rows without loading them all into memory" do
       query_object.where(active: true)
 
       row_count = 0
-      query_object.stream_each(batch_size: 500) do |row|
+      query_object.stream_each(batch_size: 500) do |_row|
         row_count += 1
       end
 
-      expected = query_object.where(active: true).count
+      expected = User.where(active: true).count
       expect(row_count).to eq(expected)
     end
   end

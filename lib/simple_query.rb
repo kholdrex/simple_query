@@ -3,6 +3,8 @@
 require "active_support/concern"
 require "active_record"
 
+require_relative "simple_query/stream/mysql_stream"
+require_relative "simple_query/stream/postgres_stream"
 require_relative "simple_query/builder"
 require_relative "simple_query/read_model"
 require_relative "simple_query/clauses/where_clause"
