@@ -2,6 +2,19 @@
 
 All notable changes to this project are documented in this file.
 
+## [0.4.0] - 2025-03-17
+
+### Added
+- **MySQL Streaming**: `stream_each` now supports MySQL (via `mysql2` gem’s streaming mode) in addition to PostgreSQL cursors.
+- **Multi-DB Performance**: Officially tested and benchmarked on both Postgres and MySQL, showing significant speed and memory savings vs. ActiveRecord.
+- **Memory Profiling**: Documented memory usage comparisons, demonstrating up to ~50% fewer allocations in `stream_each` vs `find_each`.
+- **Enhanced Bulk Update**: Additional benchmarks for `.bulk_update` show 10–25% faster updates than `update_all` in large datasets.
+- **Improved README**: Updated Performance section with streaming benchmarks, memory usage stats, and multi-DB coverage.
+
+### Changed
+- **Refactored** streaming logic into separate modules (`PostgresStream`, `MysqlStream`) for cleaner DB-specific code.
+- **Loosen** tests for quoting, ensuring MySQL’s backticks and Postgres’s double quotes both pass with minimal overhead.
+
 ## [0.3.2] - 2025-02-28
 
 ### Added
