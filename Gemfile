@@ -8,7 +8,12 @@ group :test do
   gem "memory_profiler"
   gem "mysql2", "~> 0.5.2"
   gem "pg", "~> 1.5.0", ">= 1.5.6"
-  gem "sqlite3", "~> 2.1"
+
+  if Gem::Version.new(RUBY_VERSION) >= Gem::Version.new("3.1.0")
+    gem "sqlite3", "~> 2.1"
+  else
+    gem "sqlite3", "~> 1.5"
+  end
 end
 
 group :development, :test do
