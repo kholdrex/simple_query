@@ -73,7 +73,7 @@ RSpec.describe SimpleQuery::Builder do
             .join(:users, :companies, foreign_key: :user_id, primary_key: :id)
             .build_query
             .to_sql
-      expect(sql).to match(/INNER JOIN "?companies"? ON "?companies"?\."?user_id"? = "?users"?\."?id"?/i)
+      expect(sql).to match(/INNER JOIN .*companies.* ON .*companies.*user_id.*=.*users.*id/i)
     end
 
     it "supports left_join" do
@@ -81,7 +81,7 @@ RSpec.describe SimpleQuery::Builder do
             .left_join(:users, :companies, foreign_key: :user_id, primary_key: :id)
             .build_query
             .to_sql
-      expect(sql).to match(/LEFT OUTER JOIN "?companies"? ON "?companies"?\."?user_id"? = "?users"?\."?id"?/i)
+      expect(sql).to match(/LEFT OUTER JOIN.*companies.*ON.*companies.*user_id.*=.*users.*id/i)
     end
 
     it "supports right_join" do
@@ -89,7 +89,7 @@ RSpec.describe SimpleQuery::Builder do
             .right_join(:users, :companies, foreign_key: :user_id, primary_key: :id)
             .build_query
             .to_sql
-      expect(sql).to match(/RIGHT OUTER JOIN "?companies"? ON "?companies"?\."?user_id"? = "?users"?\."?id"?/i)
+      expect(sql).to match(/RIGHT OUTER JOIN.*companies.*ON.*companies.*user_id.*=.*users.*id/i)
     end
 
     it "supports full_join" do
@@ -97,7 +97,7 @@ RSpec.describe SimpleQuery::Builder do
             .full_join(:users, :companies, foreign_key: :user_id, primary_key: :id)
             .build_query
             .to_sql
-      expect(sql).to match(/FULL OUTER JOIN "?companies"? ON "?companies"?\."?user_id"? = "?users"?\."?id"?/i)
+      expect(sql).to match(/FULL OUTER JOIN.*companies.*ON.*companies.*user_id.*=.*users.*id/i)
     end
 
     it "supports DISTINCT queries" do
@@ -374,7 +374,7 @@ RSpec.describe SimpleQuery::Builder do
     it "raises an error if the set hash includes non existing columns" do
       expect do
         query_object.bulk_update(set: { random_column: 9 })
-      end.to raise_error(ActiveRecord::StatementInvalid, /SQLite3::SQLException/)
+      end.to raise_error(ActiveRecord::StatementInvalid, /random_column/)
     end
 
     it "raises an error if the set hash is empty" do

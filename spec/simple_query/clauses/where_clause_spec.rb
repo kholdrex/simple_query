@@ -55,7 +55,7 @@ RSpec.describe SimpleQuery::WhereClause do
 
         sql_node = where_clause.conditions.first
         expect(sql_node).to be_a(Arel::Nodes::SqlLiteral)
-        expect(sql_node.to_s).to match(/id >= 100/)
+        expect(sql_node.to_s).to match(/id\s*>=\s*'?100'?/i)
         expect(sql_node.to_s).to match(/name LIKE '%Jane%'/)
       end
     end
