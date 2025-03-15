@@ -192,16 +192,27 @@ Scopes return self, so you can chain multiple scopes or mix them with standard q
 
 ## Performance
 
-SimpleQuery is designed to potentially outperform standard ActiveRecord queries on large datasets. In our benchmarks with 100,000 records, SimpleQuery showed improved performance compared to equivalent ActiveRecord queries.
+SimpleQuery aims to outperform standard ActiveRecord queries at scale. We’ve benchmarked **1,000,000** records on **both PostgreSQL** and **MySQL**, with the following results:
 
+### PostgreSQL (1,000,000 records)
 ```
-🚀 Performance Results (100,000 records):
-ActiveRecord Query:                  0.47441 seconds
-SimpleQuery Execution (Struct):      0.05346 seconds
-SimpleQuery Execution (Read model):  0.14408 seconds
+🚀 Performance Results (1000,000 records):
+ActiveRecord Query:                  10.36932 seconds
+SimpleQuery Execution (Struct):      3.46136 seconds
+SimpleQuery Execution (Read model):  2.20905 seconds
 ```
-- The **Struct-based** approach is the fastest. 
-- The **Read model** approach is still significantly faster than ActiveRecord, while letting you define custom logic or domain-specific attributes.
+- **Struct-based** approach remains the fastest, skipping model overhead.
+- **Read model** approach is still significantly faster than standard ActiveRecord while allowing domain-specific logic.
+
+### MySQL (1,000,000 records)
+```
+🚀 Performance Results (1000,000 records):
+ActiveRecord Query:                  10.45833 seconds
+SimpleQuery Execution (Struct):      3.04655 seconds
+SimpleQuery Execution (Read model):  3.69052 seconds
+```
+- Even in MySQL, **Struct** was roughly **three times faster** than ActiveRecord’s overhead.
+- Read models still outperform AR, though by a narrower margin in this scenario.
 
 ## Development
 
