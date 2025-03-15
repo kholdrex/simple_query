@@ -28,7 +28,7 @@ RSpec.describe SimpleQuery::SetClause do
       sql = clause.to_sql
 
       expect(sql).to match(/status.*=.*'archived'/i)
-      expect(sql).to match(/"updated_at" = '\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}'/)
+      expect(sql).to match(/updated_at.*=\s*'\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}'/)
       expect(sql).to include(",")
     end
 

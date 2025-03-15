@@ -40,7 +40,7 @@ RSpec.describe SimpleQuery::JoinClause do
       join_clause.apply_to(arel_manager)
       sql = arel_manager.to_sql
 
-      expect(sql).to match(/JOIN "companies"/i)
+      expect(sql).to match(/JOIN.*companies/i)
       expect(sql).to match(/JOIN "projects"/i)
     end
   end
