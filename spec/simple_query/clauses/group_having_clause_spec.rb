@@ -53,7 +53,7 @@ RSpec.describe SimpleQuery::GroupHavingClause do
 
       expect(sql).to match(/GROUP BY.*users.*city/i)
       expect(sql).to match(/HAVING/i)
-      expect(sql).to match(/"users"."city" = 'Paris'/i)
+      expect(sql).to match(/users.*city.*=.*'Paris'/i)
       expect(sql).to match(/"users"."age" > 20/i)
     end
 

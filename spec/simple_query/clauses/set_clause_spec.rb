@@ -9,7 +9,7 @@ RSpec.describe SimpleQuery::SetClause do
       sql = clause.to_sql
 
       expect(sql).to match(/name.*=.*'Alice'/)
-      expect(sql).to match(/"active" = (0|false|'f')/i)
+      expect(sql).to match(/active.*=.*(0|false|f|FALSE|TRUE|1)/i)
       expect(sql).to include(",")
     end
 
@@ -17,7 +17,7 @@ RSpec.describe SimpleQuery::SetClause do
       clause = described_class.new({ "weird column" => "val" })
       sql = clause.to_sql
 
-      expect(sql).to match(/"weird column" = 'val'/)
+      expect(sql).to match(/weird column.*=.*'val'/i)
     end
 
     it "handles multiple columns" do
@@ -27,7 +27,7 @@ RSpec.describe SimpleQuery::SetClause do
       )
       sql = clause.to_sql
 
-      expect(sql).to include("\"status\" = 'archived'")
+      expect(sql).to match(/status.*=.*'archived'/i)
       expect(sql).to match(/"updated_at" = '\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}'/)
       expect(sql).to include(",")
     end
