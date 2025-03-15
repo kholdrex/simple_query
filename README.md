@@ -203,6 +203,18 @@ SimpleQuery aims to outperform standard ActiveRecord queries at scale. We’ve b
 ActiveRecord Query:                  10.36932 seconds
 SimpleQuery Execution (Struct):      3.46136 seconds
 SimpleQuery Execution (Read model):  2.20905 seconds
+
+----------------------------------------------------
+ActiveRecord find_each:              6.10077 seconds
+SimpleQuery stream_each:             2.75639 seconds
+
+--- AR find_each Memory Report ---
+Total allocated: 1.98 GB (16,001,659 objects)
+Retained:        ~2 KB
+
+--- SimpleQuery stream_each Memory Report ---
+Total allocated: 1.38 GB (8,000,211 objects)
+Retained:        ~3 KB
 ```
 - **Struct-based** approach remains the fastest, skipping model overhead.
 - **Read model** approach is still significantly faster than standard ActiveRecord while allowing domain-specific logic.
@@ -213,6 +225,18 @@ SimpleQuery Execution (Read model):  2.20905 seconds
 ActiveRecord Query:                  10.45833 seconds
 SimpleQuery Execution (Struct):      3.04655 seconds
 SimpleQuery Execution (Read model):  3.69052 seconds
+
+----------------------------------------------------
+ActiveRecord find_each:              5.04671 seconds
+SimpleQuery stream_each:             2.96602 seconds
+
+--- AR find_each Memory Report ---
+Total allocated: 1.32 GB (11,001,445 objects)
+Retained:        ~2.7 KB
+
+--- SimpleQuery stream_each Memory Report ---
+Total allocated: 1.22 GB (8,000,068 objects)
+Retained:        ~3.9 KB
 ```
 - Even in MySQL, **Struct** was roughly **three times faster** than ActiveRecord’s overhead.
 - Read models still outperform AR, though by a narrower margin in this scenario.
