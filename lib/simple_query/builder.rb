@@ -2,6 +2,9 @@
 
 module SimpleQuery
   class Builder
+    include SimpleQuery::Stream::PostgresStream
+    include SimpleQuery::Stream::MysqlStream
+
     attr_reader :model, :arel_table
 
     def initialize(source)
@@ -105,6 +108,17 @@ module SimpleQuery
       sql += " WHERE #{where_sql}" unless where_sql.nil? || where_sql.empty?
 
       ActiveRecord::Base.connection.execute(sql)
+    end
+
+    def stream_each(batch_size: 1000, &block)
+      adapter = ActiveRecord::Base.connection.adapter_name.downcase
+      if adapter.include?("postgres")
+        stream_each_postgres(batch_size, &block)
+      elsif adapter.include?("mysql")
+        stream_each_mysql(&block)
+      else
+        raise "stream_each is only implemented for Postgres and MySQL."
+      end
     end
 
     def execute

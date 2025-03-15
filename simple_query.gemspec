@@ -24,11 +24,4 @@ Gem::Specification.new do |spec|
   spec.require_paths = ["lib"]
 
   spec.add_dependency "activerecord", ">= 7.0", "<= 8.0"
-
-  spec.add_development_dependency "mysql2", "~> 0.5.2"
-  spec.add_development_dependency "pg", "~> 1.5", ">= 1.5.6"
-  spec.add_development_dependency "rake", "~> 13.0"
-  spec.add_development_dependency "rspec", "~> 3.0"
-  spec.add_development_dependency "rubocop", "~> 1.21"
-  spec.add_development_dependency "sqlite3", "~> 1.5.0"
 end
