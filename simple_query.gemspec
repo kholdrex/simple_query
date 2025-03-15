@@ -8,7 +8,7 @@ Gem::Specification.new do |spec|
   spec.authors       = ["Alex Kholodniak"]
   spec.email         = ["alexandrkholodniak@gmail.com"]
 
-  spec.summary       = "A lightweight and efficient query builder for ActiveRecord."
+  spec.summary       = "A lightweight, multi-DB-friendly, and high-performance query builder for ActiveRecord, featuring streaming, bulk updates, and read-model support."
   spec.description   = "SimpleQuery provides a flexible and performant way to construct complex database queries in Ruby on Rails applications. It offers an intuitive interface for building queries with joins, conditions, and aggregations, while potentially outperforming standard ActiveRecord queries on large datasets."
   spec.homepage      = "https://github.com/kholdrex/simple_query"
   spec.license       = "MIT"
