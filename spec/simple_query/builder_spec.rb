@@ -142,6 +142,179 @@ RSpec.describe SimpleQuery::Builder do
       expect(result.first.total_revenue).to be_a(Numeric)
     end
 
+    context "Enhanced Aggregation Support" do
+      describe "#count" do
+        it "counts all records" do
+          result = User.simple_query.count.execute
+          expect(result.first.count).to eq(User.count)
+        end
+
+        it "counts specific column" do
+          result = User.simple_query.count(:email).execute
+          expect(result.first.count_email).to eq(User.where.not(email: nil).count)
+        end
+
+        it "counts with custom alias" do
+          result = User.simple_query.count(:id, alias_name: "total_users").execute
+          expect(result.first.total_users).to eq(User.count)
+        end
+
+        it "counts with where conditions" do
+          result = User.simple_query.where(active: true).count.execute
+          expect(result.first.count).to eq(User.where(active: true).count)
+        end
+      end
+
+      describe "#sum" do
+        it "sums annual revenue" do
+          result = Company.simple_query.sum(:annual_revenue).execute
+          expected = Company.sum(:annual_revenue)
+          expect(result.first.sum_annual_revenue).to eq(expected)
+        end
+
+        it "sums with custom alias" do
+          result = Company.simple_query.sum(:annual_revenue, alias_name: "total_revenue").execute
+          expected = Company.sum(:annual_revenue)
+          expect(result.first.total_revenue).to eq(expected)
+        end
+
+        it "sums with group by" do
+          result = Company.simple_query
+                          .select(:industry)
+                          .sum(:annual_revenue)
+                          .group(:industry)
+                          .execute
+
+          expect(result.size).to be >= 1
+          tech_company = result.find { |r| r.industry == "Technology" }
+          expect(tech_company.sum_annual_revenue).to be_a(Numeric)
+        end
+      end
+
+      describe "#avg" do
+        it "calculates average annual revenue" do
+          result = Company.simple_query.avg(:annual_revenue).execute
+          expected = Company.average(:annual_revenue)
+          expect(result.first.avg_annual_revenue.to_f).to be_within(0.01).of(expected.to_f)
+        end
+      end
+
+      describe "#min and #max" do
+        it "finds minimum and maximum values" do
+          result = Company.simple_query
+                          .min(:annual_revenue)
+                          .max(:annual_revenue)
+                          .execute
+
+          expected_min = Company.minimum(:annual_revenue)
+          expected_max = Company.maximum(:annual_revenue)
+
+          expect(result.first.min_annual_revenue).to eq(expected_min)
+          expect(result.first.max_annual_revenue).to eq(expected_max)
+        end
+      end
+
+      describe "#custom_aggregation" do
+        it "supports custom aggregation expressions" do
+          result = Company.simple_query
+                          .custom_aggregation("COUNT(DISTINCT industry)", "unique_industries")
+                          .execute
+
+          expect(result.first.unique_industries).to be_a(Numeric)
+          expect(result.first.unique_industries).to be > 0
+        end
+      end
+
+      describe "mixed select and aggregations" do
+        it "combines regular selects with aggregations" do
+          result = Company.simple_query
+                          .select(:industry)
+                          .count
+                          .sum(:annual_revenue)
+                          .group(:industry)
+                          .execute
+
+          expect(result.size).to be >= 1
+          first_result = result.first
+
+          expect(first_result).to respond_to(:industry)
+          expect(first_result).to respond_to(:count)
+          expect(first_result).to respond_to(:sum_annual_revenue)
+        end
+
+        it "works without explicit selects when using aggregations" do
+          result = User.simple_query.count.execute
+          expect(result.first.count).to eq(User.count)
+        end
+      end
+
+      describe "with joins" do
+        it "aggregates across joined tables" do
+          result = User.simple_query
+                       .join(:users, :companies, foreign_key: :user_id, primary_key: :id)
+                       .count
+                       .sum("companies.annual_revenue")
+                       .execute
+
+          expect(result.first.count).to be_a(Numeric)
+          expect(result.first).to respond_to(:sum_companies_annual_revenue)
+        end
+      end
+
+      describe "error handling" do
+        it "raises error for sum without column" do
+          expect do
+            User.simple_query.sum(nil).execute
+          end.to raise_error(ArgumentError, /Column is required/)
+        end
+
+        it "raises error for avg without column" do
+          expect do
+            User.simple_query.avg(nil).execute
+          end.to raise_error(ArgumentError, /Column is required/)
+        end
+      end
+
+      describe "advanced aggregation features" do
+        describe "#stats" do
+          it "provides comprehensive statistics for a column" do
+            result = Company.simple_query.stats(:annual_revenue).execute
+
+            expect(result.first).to respond_to(:annual_revenue_count)
+            expect(result.first).to respond_to(:annual_revenue_sum)
+            expect(result.first).to respond_to(:annual_revenue_avg)
+            expect(result.first).to respond_to(:annual_revenue_min)
+            expect(result.first).to respond_to(:annual_revenue_max)
+
+            expect(result.first.annual_revenue_count).to eq(Company.count)
+            expect(result.first.annual_revenue_sum).to eq(Company.sum(:annual_revenue))
+          end
+
+          it "accepts custom prefix" do
+            result = Company.simple_query.stats(:annual_revenue, alias_prefix: "revenue").execute
+
+            expect(result.first).to respond_to(:revenue_count)
+            expect(result.first).to respond_to(:revenue_sum)
+            expect(result.first).to respond_to(:revenue_avg)
+            expect(result.first).to respond_to(:revenue_min)
+            expect(result.first).to respond_to(:revenue_max)
+          end
+        end
+
+        describe "#total_count" do
+          it "counts with custom alias" do
+            result = User.simple_query.total_count(alias_name: "user_total").execute
+            expect(result.first.user_total).to eq(User.count)
+          end
+
+          it "uses default alias" do
+            result = User.simple_query.total_count.execute
+            expect(result.first.total).to eq(User.count)
+          end
+        end
+      end
+    end
+
     it "supports GROUP BY and HAVING" do
       result = Company.simple_query
                       .select(:industry, Arel.sql("SUM(companies.annual_revenue) AS total_revenue"))

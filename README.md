@@ -104,6 +104,94 @@ User.simple_query
     .execute
 ```
 
+## Enhanced Aggregation Support
+
+SimpleQuery provides a comprehensive set of aggregation methods that are more convenient and readable than writing raw SQL:
+
+### Basic Aggregations
+
+```ruby
+# Count records
+User.simple_query.count.execute
+# => #<struct count=1000>
+
+# Count specific column (non-null values)
+User.simple_query.count(:email).execute
+# => #<struct count_email=995>
+
+# Sum values
+Company.simple_query.sum(:annual_revenue).execute
+# => #<struct sum_annual_revenue=50000000>
+
+# Average values
+Company.simple_query.avg(:annual_revenue).execute
+# => #<struct avg_annual_revenue=1000000.5>
+
+# Find minimum and maximum
+Company.simple_query.min(:annual_revenue).max(:annual_revenue).execute
+# => #<struct min_annual_revenue=100000, max_annual_revenue=5000000>
+```
+
+### Statistical Functions
+
+```ruby
+# Variance and standard deviation
+User.simple_query.variance(:score).stddev(:score).execute
+# => #<struct variance_score=125.67, stddev_score=11.21>
+
+# Database-specific group concatenation
+User.simple_query
+    .select(:department)
+    .group_concat(:name, separator: ", ")
+    .group(:department)
+    .execute
+# => #<struct department="Engineering", group_concat_name="Alice, Bob, Charlie">
+```
+
+### Advanced Aggregation Features
+
+```ruby
+# Get comprehensive statistics for a column
+Company.simple_query.stats(:annual_revenue).execute
+# => #<struct 
+#      annual_revenue_count=100,
+#      annual_revenue_sum=50000000,
+#      annual_revenue_avg=500000,
+#      annual_revenue_min=100000,
+#      annual_revenue_max=2000000
+#    >
+
+# Custom aggregations
+Company.simple_query
+        .custom_aggregation("COUNT(DISTINCT industry)", "unique_industries")
+        .execute
+# => #<struct unique_industries=5>
+
+# Combining with other features
+Company.simple_query
+        .select(:industry)
+        .count
+        .sum(:annual_revenue)
+        .group(:industry)
+        .execute
+# => [
+#      #<struct industry="Technology", count=50, sum_annual_revenue=25000000>,
+#      #<struct industry="Finance", count=30, sum_annual_revenue=20000000>
+#    ]
+```
+
+### Custom Aliases
+
+All aggregation methods support custom aliases:
+
+```ruby
+User.simple_query
+    .count(:id, alias_name: "total_users")
+    .sum(:score, alias_name: "total_score")
+    .execute
+# => #<struct total_users=1000, total_score=85000>
+```
+
 ## Custom Read Models
 By default, SimpleQuery returns results as `Struct` objects for maximum speed. However, you can also define a lightweight model class for more explicit attribute handling or custom logic.
 
