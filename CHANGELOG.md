@@ -2,6 +2,30 @@
 
 All notable changes to this project are documented in this file.
 
+## [0.5.0] - 2025-01-XX
+
+### Added
+- **Enhanced Aggregation Support**: Comprehensive aggregation methods for improved developer experience
+  - Basic aggregations: `count`, `sum`, `avg`, `min`, `max`
+  - Statistical functions: `variance`, `stddev`
+  - Database-specific functions: `group_concat` (MySQL/PostgreSQL/SQLite compatible)
+  - Advanced features: `stats` method for comprehensive column statistics
+  - Custom aggregations via `custom_aggregation` method
+  - All aggregation methods support custom aliases
+  - Automatic alias sanitization for complex column names (e.g., `companies.revenue` → `companies_revenue`)
+- **Aggregation DSL**: Fluent interface for chaining aggregations with other query methods
+- **Comprehensive Test Coverage**: Full test suite for aggregation functionality
+- **Enhanced Documentation**: Detailed aggregation guide with examples
+
+### Changed
+- **Query Building**: Updated builder to seamlessly integrate aggregations with SELECT clauses
+- **SQL Generation**: Improved handling of mixed regular selects and aggregations
+- **Type Definitions**: Updated RBS signatures to include new aggregation methods
+
+### Performance
+- **Database-Level Aggregations**: All calculations performed at the database level for optimal performance
+- **Memory Efficiency**: Aggregations use minimal memory compared to loading full record sets
+
 ## [0.4.0] - 2025-03-17
 
 ### Added

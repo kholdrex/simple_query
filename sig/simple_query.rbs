@@ -27,6 +27,24 @@ module SimpleQuery
 
     def distinct: () -> self
 
+    # Aggregation methods
+    def count: (?Symbol? column, ?alias_name: String?) -> self
+    def sum: (Symbol column, ?alias_name: String?) -> self
+    def avg: (Symbol column, ?alias_name: String?) -> self
+    def min: (Symbol column, ?alias_name: String?) -> self
+    def max: (Symbol column, ?alias_name: String?) -> self
+    def variance: (Symbol column, ?alias_name: String?) -> self
+    def stddev: (Symbol column, ?alias_name: String?) -> self
+    def group_concat: (Symbol column, ?separator: String, ?alias_name: String?) -> self
+    def custom_aggregation: (String expression, String alias_name) -> self
+
+    # Advanced aggregation methods
+    def total_count: (?alias_name: String) -> self
+    def stats: (Symbol column, ?alias_prefix: String?) -> self
+    def first_by: (Symbol column, ?alias_name: String?) -> self
+    def last_by: (Symbol column, ?alias_name: String?) -> self
+    def percentage_of_total: (Symbol column, ?alias_name: String?) -> self
+
     def execute: () -> Array[untyped]
 
     def lazy_execute: () -> Enumerator[untyped, void]

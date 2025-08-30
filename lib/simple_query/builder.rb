@@ -18,6 +18,7 @@ module SimpleQuery
       @orders = OrderClause.new(@arel_table)
       @limits = LimitOffsetClause.new
       @distinct_flag = DistinctClause.new
+      @aggregations = AggregationClause.new(@arel_table)
 
       @query_cache = {}
       @query_built = false
@@ -91,6 +92,98 @@ module SimpleQuery
       self
     end
 
+    # Aggregation methods
+    def count(column = nil, alias_name: nil)
+      @aggregations.count(column, alias_name: alias_name)
+      reset_query
+      self
+    end
+
+    def sum(column, alias_name: nil)
+      @aggregations.sum(column, alias_name: alias_name)
+      reset_query
+      self
+    end
+
+    def avg(column, alias_name: nil)
+      @aggregations.avg(column, alias_name: alias_name)
+      reset_query
+      self
+    end
+
+    def min(column, alias_name: nil)
+      @aggregations.min(column, alias_name: alias_name)
+      reset_query
+      self
+    end
+
+    def max(column, alias_name: nil)
+      @aggregations.max(column, alias_name: alias_name)
+      reset_query
+      self
+    end
+
+    def variance(column, alias_name: nil)
+      @aggregations.variance(column, alias_name: alias_name)
+      reset_query
+      self
+    end
+
+    def stddev(column, alias_name: nil)
+      @aggregations.stddev(column, alias_name: alias_name)
+      reset_query
+      self
+    end
+
+    def group_concat(column, separator: ",", alias_name: nil)
+      @aggregations.group_concat(column, separator: separator, alias_name: alias_name)
+      reset_query
+      self
+    end
+
+    def custom_aggregation(expression, alias_name)
+      @aggregations.custom(expression, alias_name)
+      reset_query
+      self
+    end
+
+    # Convenience methods for common aggregation patterns
+    def total_count(alias_name: "total")
+      count(alias_name: alias_name)
+    end
+
+    def stats(column, alias_prefix: nil)
+      prefix = alias_prefix || column.to_s
+      count(alias_name: "#{prefix}_count")
+      sum(column, alias_name: "#{prefix}_sum")
+      avg(column, alias_name: "#{prefix}_avg")
+      min(column, alias_name: "#{prefix}_min")
+      max(column, alias_name: "#{prefix}_max")
+      self
+    end
+
+    # Method to get first/top record by column
+    def first_by(column, alias_name: nil)
+      alias_name ||= "first_#{column}"
+      custom_aggregation("FIRST_VALUE(#{resolve_column_name(column)}) OVER (ORDER BY #{resolve_column_name(column)})",
+                         alias_name)
+    end
+
+    # Method to get last/bottom record by column
+    def last_by(column, alias_name: nil)
+      alias_name ||= "last_#{column}"
+      custom_aggregation("LAST_VALUE(#{resolve_column_name(column)}) OVER (ORDER BY #{resolve_column_name(column)})",
+                         alias_name)
+    end
+
+    # Percentage calculations
+    def percentage_of_total(column, alias_name: nil)
+      alias_name ||= "#{column}_percentage"
+      column_expr = resolve_column_name(column)
+      expression = "ROUND((#{column_expr} * 100.0 / SUM(#{column_expr}) OVER ()), 2)"
+      custom_aggregation(expression, alias_name)
+    end
+
     def map_to(klass)
       @read_model_class = klass
       reset_query
@@ -145,7 +238,10 @@ module SimpleQuery
 
       @query = Arel::SelectManager.new(Arel::Table.engine)
       @query.from(@arel_table)
-      @query.project(*(@selects.empty? ? [@arel_table[Arel.star]] : @selects))
+
+      # Combine regular selects with aggregations
+      all_selects = build_select_expressions
+      @query.project(*all_selects)
 
       apply_distinct
       apply_where_conditions
@@ -159,6 +255,23 @@ module SimpleQuery
     end
 
     private
+
+    def build_select_expressions
+      expressions = []
+
+      # Add regular selects
+      if @selects.any?
+        expressions.concat(@selects)
+      elsif @aggregations.empty?
+        # Only use * if no aggregations and no explicit selects
+        expressions << @arel_table[Arel.star]
+      end
+
+      # Add aggregation expressions
+      expressions.concat(@aggregations.to_arel_expressions)
+
+      expressions
+    end
 
     def build_where_sql
       condition = @wheres.to_arel
@@ -182,7 +295,8 @@ module SimpleQuery
         @orders.orders,
         @limits.limit_value,
         @limits.offset_value,
-        @distinct_flag.use_distinct?
+        @distinct_flag.use_distinct?,
+        @aggregations.aggregations
       ]
 
       @query_cache[key] ||= build_query.to_sql
@@ -264,6 +378,17 @@ module SimpleQuery
         field
       else
         raise ArgumentError, "Unsupported select field type: #{field.class}"
+      end
+    end
+
+    def resolve_column_name(column)
+      case column
+      when Symbol
+        "#{@arel_table.name}.#{column}"
+      when String
+        column.include?(".") ? column : "#{@arel_table.name}.#{column}"
+      else
+        column.to_s
       end
     end
 
