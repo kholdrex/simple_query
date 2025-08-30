@@ -2,7 +2,7 @@
 
 All notable changes to this project are documented in this file.
 
-## [0.5.0] - 2025-01-XX
+## [0.5.0] - 2025-08-29
 
 ### Added
 - **Enhanced Aggregation Support**: Comprehensive aggregation methods for improved developer experience
