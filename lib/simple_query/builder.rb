@@ -23,7 +23,7 @@ module SimpleQuery
       @query_cache = {}
       @query_built = false
       @read_model_class = nil
-      @result_struct = nil
+      @result_structs = {}
     end
 
     def select(*fields)
@@ -340,7 +340,8 @@ module SimpleQuery
     end
 
     def result_struct(columns)
-      @result_struct ||= Struct.new(*columns.map(&:to_sym))
+      struct_key = columns.map(&:to_s)
+      @result_structs[struct_key] ||= Struct.new(*struct_key.map(&:to_sym))
     end
 
     def apply_distinct
