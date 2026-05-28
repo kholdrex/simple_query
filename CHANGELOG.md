@@ -2,6 +2,11 @@
 
 All notable changes to this project are documented in this file.
 
+## Unreleased
+
+### Fixed
+- Reusing a builder after changing the selected result shape now returns Struct rows with the correct members instead of reusing a stale Struct class.
+
 ## [0.5.0] - 2025-08-29
 
 ### Added

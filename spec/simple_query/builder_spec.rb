@@ -398,6 +398,46 @@ RSpec.describe SimpleQuery::Builder do
     end
   end
 
+  describe "result object shape caching" do
+    it "rebuilds Struct classes after a reused builder selects additional columns" do
+      builder = User.simple_query.select(:name).where(name: "Jane Doe")
+
+      first_result = builder.execute
+      expect(first_result.first).to respond_to(:name)
+      expect(first_result.first).not_to respond_to(:email)
+
+      second_result = builder.select(:email).execute
+      expect(second_result.first).to respond_to(:name)
+      expect(second_result.first).to respond_to(:email)
+      expect(second_result.first.email).to eq("jane@example.com")
+    end
+
+    it "rebuilds Struct classes after a reused builder adds aggregations" do
+      builder = Company.simple_query.select(:industry).group(:industry)
+
+      first_result = builder.execute
+      expect(first_result.first.members).to include(:industry)
+      expect(first_result.first.members).not_to include(:count)
+
+      second_result = builder.count.execute
+      expect(second_result.first.members).to include(:industry)
+      expect(second_result.first.members).to include(:count)
+    end
+
+    it "rebuilds Struct classes for lazy execution after a reused builder changes shape" do
+      builder = User.simple_query.select(:name).where(name: "Jane Doe")
+
+      first_result = builder.lazy_execute.first
+      expect(first_result).to respond_to(:name)
+      expect(first_result).not_to respond_to(:email)
+
+      second_result = builder.select(:email).lazy_execute.first
+      expect(second_result).to respond_to(:name)
+      expect(second_result).to respond_to(:email)
+      expect(second_result.email).to eq("jane@example.com")
+    end
+  end
+
   describe "query caching" do
     it "caches the SQL query" do
       expect(query_object.instance_variable_get(:@query_cache)).to be_empty
