@@ -1,39 +1,74 @@
 # SimpleQuery
 
-SimpleQuery is a lightweight and efficient query builder for ActiveRecord, designed to provide a flexible and performant way to construct complex database queries in Ruby on Rails applications.
+[![Gem Version](https://badge.fury.io/rb/simple_query.svg)](https://badge.fury.io/rb/simple_query)
+[![SimpleQuery CI](https://github.com/kholdrex/simple_query/actions/workflows/ci.yml/badge.svg)](https://github.com/kholdrex/simple_query/actions/workflows/ci.yml)
+
+SimpleQuery is a lightweight query builder for ActiveRecord. It gives Rails applications an explicit, chainable API for read-heavy queries, joins, aggregations, read models, bulk updates, and adapter-aware streaming without replacing ActiveRecord.
+
+Use it when you want ActiveRecord-backed SQL with less object-instantiation overhead, predictable result shapes, or a small query/read-model layer around reporting and data-processing code.
+
+## Features
+
+- Chainable query builder for ActiveRecord models
+- Struct results by default for lightweight reads
+- Optional custom read models with explicit attributes
+- Hash, Arel, raw SQL, and ActiveRecord-style placeholder conditions
+- Inner, left, right, and full joins
+- `distinct`, `group`, `having`, `order`, `limit`, and `offset`
+- Aggregation helpers: `count`, `sum`, `avg`, `min`, `max`, `variance`, `stddev`, `group_concat`, `stats`, and custom aggregations
+- Named `simple_scope` definitions for reusable SimpleQuery chains
+- `bulk_update` for set-based updates
+- `stream_each` for large result sets on PostgreSQL and MySQL
 
 ## Installation
 
-Add this line to your application's Gemfile:
+Add SimpleQuery to your application's Gemfile:
 
 ```ruby
-gem 'simple_query'
+gem "simple_query"
 ```
 
-And then execute:
+Then install:
+
 ```bash
 bundle install
 ```
 
-Or install it yourself as:
+Or install it directly:
+
 ```bash
 gem install simple_query
 ```
 
+## Compatibility
+
+SimpleQuery currently declares support for:
+
+- Ruby `>= 2.7`
+- ActiveRecord `>= 7.0`, `<= 8.0`
+
+The CI matrix covers ActiveRecord 7.0, 7.1, and 7.2 across PostgreSQL and MySQL. The gemspec currently allows ActiveRecord 8.0.0, but ActiveRecord 8 is not part of the CI matrix yet.
+
 ## Configuration
 
-By default, `SimpleQuery` does **not** automatically patch `ActiveRecord::Base`. You can **manually** include the module in individual models or in a global initializer:
+SimpleQuery does not patch every ActiveRecord model by default. Include it in the models that should expose `.simple_query`:
 
 ```ruby
-# Manual include (per model)
 class User < ActiveRecord::Base
   include SimpleQuery
 end
+```
 
-# or do it globally
+Or include it globally if you want every ActiveRecord model to have `.simple_query`:
+
+```ruby
+# config/initializers/simple_query.rb
+require "simple_query"
+
 ActiveRecord::Base.include(SimpleQuery)
 ```
-If you prefer a “just works” approach (i.e., every model has `.simple_query`), you can opt in:
+
+You can also opt into global inclusion through SimpleQuery's configuration hook:
 
 ```ruby
 # config/initializers/simple_query.rb
@@ -42,28 +77,88 @@ SimpleQuery.configure do |config|
 end
 ```
 
-This tells SimpleQuery to automatically do `ActiveRecord::Base.include(SimpleQuery)` for you.
+## Basic usage
 
-## Usage
-
-SimpleQuery offers an intuitive interface for building queries with joins, conditions, and aggregations. Here are some examples:
-
-Basic query
 ```ruby
-User.simple_query.select(:name, :email).where(active: true).execute
+users = User.simple_query
+            .select(:name, :email)
+            .where(active: true)
+            .order(name: :asc)
+            .limit(50)
+            .execute
+
+users.first
+# => #<struct name="Jane Doe", email="jane@example.com">
 ```
 
-Query with join
+`execute` returns an array of lightweight `Struct` objects unless you map the query to a custom read model.
 
-SimpleQuery now supports **all major SQL join types** — including LEFT, RIGHT, and FULL — through the following DSL methods:
+## Conditions
+
+SimpleQuery accepts several condition styles.
+
+### Hash conditions
+
 ```ruby
 User.simple_query
-    .left_join(:users, :companies, foreign_key: :user_id, primary_key: :id)
-    .select("users.name", "companies.name")
+    .select(:name, :email)
+    .where(active: true, admin: false)
     .execute
 ```
 
-Complex query with multiple joins and conditions
+Hash conditions are simple equality predicates against the query's base table.
+
+### Arel conditions
+
+```ruby
+users = User.arel_table
+
+User.simple_query
+    .select(:name)
+    .where(users[:created_at].gteq(30.days.ago))
+    .execute
+```
+
+### Placeholder conditions
+
+Array conditions are sanitized through ActiveRecord's `sanitize_sql_array`, so they are the preferred way to use SQL fragments with user-provided values:
+
+```ruby
+User.simple_query
+    .where(["name LIKE ?", "%Jane%"])
+    .execute
+
+User.simple_query
+    .where(["email = :email", { email: "jane@example.com" }])
+    .execute
+```
+
+### Raw SQL conditions
+
+Plain strings are treated as raw SQL fragments:
+
+```ruby
+User.simple_query
+    .where("active = TRUE")
+    .execute
+```
+
+Only use raw SQL strings with trusted input. For external or user-provided values, prefer hash, Arel, or placeholder conditions.
+
+## Joins
+
+Joins are explicit: pass the left table, right table, foreign key, and primary key.
+
+```ruby
+User.simple_query
+    .select(:name, :email)
+    .join(:users, :companies, foreign_key: :user_id, primary_key: :id)
+    .where(Company.arel_table[:name].eq("TechCorp"))
+    .execute
+```
+
+Multiple joins can be chained:
+
 ```ruby
 User.simple_query
     .select(:name)
@@ -71,155 +166,125 @@ User.simple_query
     .join(:companies, :projects, foreign_key: :company_id, primary_key: :id)
     .where(Company.arel_table[:industry].eq("Technology"))
     .where(Project.arel_table[:status].eq("active"))
-    .where(User.arel_table[:admin].eq(true))
     .execute
 ```
 
-Lazy execution
+Join helpers are also available:
+
 ```ruby
 User.simple_query
+    .left_join(:users, :companies, foreign_key: :user_id, primary_key: :id)
     .select(:name)
+    .execute
+```
+
+Supported join types:
+
+- `join(..., type: :inner)` / `join(...)`
+- `left_join(...)`
+- `right_join(...)`
+- `full_join(...)`
+
+Database support for right and full outer joins depends on the adapter and database version.
+
+## Selecting, ordering, and paging
+
+```ruby
+User.simple_query
+    .select(:id, :name, "LOWER(email) AS normalized_email")
+    .distinct
     .where(active: true)
-    .lazy_execute
-```
-
-Placeholder-Based Conditions
-
-SimpleQuery now supports **ActiveRecord-style placeholders**, letting you pass arrays with `?` or `:named` placeholders to your `.where` clauses:
-
-```ruby
-# Positional placeholders:
-User.simple_query
-    .where(["name LIKE ?", "%Alice%"])
-    .execute
-
-# Named placeholders:
-User.simple_query
-    .where(["email = :email", { email: "alice@example.com" }])
-    .execute
-
-# Multiple placeholders in one condition:
-User.simple_query
-    .where(["age >= :min_age AND age <= :max_age", { min_age: 18, max_age: 35 }])
+    .order(name: :asc)
+    .limit(25)
+    .offset(50)
     .execute
 ```
 
-## Enhanced Aggregation Support
+`select` accepts symbols, SQL strings, and Arel nodes. SQL strings are inserted as SQL fragments, so keep them trusted.
 
-SimpleQuery provides a comprehensive set of aggregation methods that are more convenient and readable than writing raw SQL:
+`order` accepts a hash of column names to directions, such as `order(created_at: :desc)`.
 
-### Basic Aggregations
+## Aggregations
+
+SimpleQuery can build common aggregate expressions without hand-writing each SQL expression.
 
 ```ruby
-# Count records
-User.simple_query.count.execute
-# => #<struct count=1000>
-
-# Count specific column (non-null values)
-User.simple_query.count(:email).execute
-# => #<struct count_email=995>
-
-# Sum values
-Company.simple_query.sum(:annual_revenue).execute
-# => #<struct sum_annual_revenue=50000000>
-
-# Average values
-Company.simple_query.avg(:annual_revenue).execute
-# => #<struct avg_annual_revenue=1000000.5>
-
-# Find minimum and maximum
-Company.simple_query.min(:annual_revenue).max(:annual_revenue).execute
-# => #<struct min_annual_revenue=100000, max_annual_revenue=5000000>
+Company.simple_query
+       .count
+       .sum(:annual_revenue)
+       .avg(:annual_revenue)
+       .min(:annual_revenue)
+       .max(:annual_revenue)
+       .execute
 ```
 
-### Statistical Functions
+Custom aliases are supported:
 
 ```ruby
-# Variance and standard deviation
-User.simple_query.variance(:score).stddev(:score).execute
-# => #<struct variance_score=125.67, stddev_score=11.21>
-
-# Database-specific group concatenation
-User.simple_query
-    .select(:department)
-    .group_concat(:name, separator: ", ")
-    .group(:department)
-    .execute
-# => #<struct department="Engineering", group_concat_name="Alice, Bob, Charlie">
+Company.simple_query
+       .count(:id, alias_name: "company_count")
+       .sum(:annual_revenue, alias_name: "total_revenue")
+       .execute
 ```
 
-### Advanced Aggregation Features
+Grouped aggregations work with selected fields:
 
 ```ruby
-# Get comprehensive statistics for a column
+Company.simple_query
+       .select(:industry)
+       .count(alias_name: "company_count")
+       .sum(:annual_revenue, alias_name: "total_revenue")
+       .group(:industry)
+       .execute
+```
+
+Convenience helpers include:
+
+```ruby
 Company.simple_query.stats(:annual_revenue).execute
-# => #<struct 
-#      annual_revenue_count=100,
-#      annual_revenue_sum=50000000,
-#      annual_revenue_avg=500000,
-#      annual_revenue_min=100000,
-#      annual_revenue_max=2000000
-#    >
-
-# Custom aggregations
-Company.simple_query
-        .custom_aggregation("COUNT(DISTINCT industry)", "unique_industries")
-        .execute
-# => #<struct unique_industries=5>
-
-# Combining with other features
-Company.simple_query
-        .select(:industry)
-        .count
-        .sum(:annual_revenue)
-        .group(:industry)
-        .execute
-# => [
-#      #<struct industry="Technology", count=50, sum_annual_revenue=25000000>,
-#      #<struct industry="Finance", count=30, sum_annual_revenue=20000000>
-#    ]
+Company.simple_query.total_count.execute
+User.simple_query.variance(:score).stddev(:score).execute
+User.simple_query.group_concat(:name, separator: ", ").execute
 ```
 
-### Custom Aliases
-
-All aggregation methods support custom aliases:
+For database-specific expressions, use `custom_aggregation` with trusted SQL:
 
 ```ruby
-User.simple_query
-    .count(:id, alias_name: "total_users")
-    .sum(:score, alias_name: "total_score")
-    .execute
-# => #<struct total_users=1000, total_score=85000>
+Company.simple_query
+       .custom_aggregation("COUNT(DISTINCT industry)", "unique_industries")
+       .execute
 ```
 
-## Custom Read Models
-By default, SimpleQuery returns results as `Struct` objects for maximum speed. However, you can also define a lightweight model class for more explicit attribute handling or custom logic.
+## Custom read models
 
-**Create a read model** inheriting from `SimpleQuery::ReadModel`:
+By default, query results are returned as `Struct` objects. For named methods and domain-specific result objects, define a read model:
+
 ```ruby
-class MyUserReadModel < SimpleQuery::ReadModel
+class UserSummary < SimpleQuery::ReadModel
   attribute :identifier, column: :id
-  attribute :full_name,  column: :name
+  attribute :full_name, column: :name
 end
 ```
 
-**Map query results** to your read model:
+Map query results to the read model:
+
 ```ruby
-results = User.simple_query
-              .select("users.id AS id", "users.name AS name")
-              .where(active: true)
-              .map_to(MyUserReadModel)
-              .execute
+users = User.simple_query
+            .select("users.id AS id", "users.name AS name")
+            .where(active: true)
+            .map_to(UserSummary)
+            .execute
 
-results.each do |user|
-  puts user.identifier    # => user.id from the DB
-  puts user.full_name     # => user.name from the DB
-end
+users.first.identifier
+users.first.full_name
 ```
-This custom read model approach provides more clarity or domain-specific logic while still being faster than typical ActiveRecord instantiation.
 
-## Named Scopes
-SimpleQuery now supports named scopes, allowing you to reuse common query logic in a style similar to ActiveRecord’s built-in scopes. To define a scope, use the simple_scope class method in your model:
+The selected SQL aliases must match the read model's configured column names.
+
+## Named scopes
+
+Use `simple_scope` to define reusable query fragments on a model that includes SimpleQuery:
+
 ```ruby
 class User < ActiveRecord::Base
   include SimpleQuery
@@ -228,119 +293,132 @@ class User < ActiveRecord::Base
     where(active: true)
   end
 
-  simple_scope :admins do
-    where(admin: true)
-  end
+  simple_scope :admins, -> { where(admin: true) }
 
-  # Block-based scope with parameter
   simple_scope :by_name do |name|
     where(name: name)
   end
-
-  # Lambda-based scope with parameter
-  simple_scope :by_name, ->(name) { where(name: name) }
 end
 ```
-You can then chain these scopes seamlessly with the normal SimpleQuery DSL:
+
+Scopes are evaluated in the context of the SimpleQuery builder and can be chained with the normal DSL:
 
 ```ruby
-# Parameterless scopes
-results = User.simple_query.active.admins.execute
-
-# Parameterized scope
-results = User.simple_query.by_name("Jane Doe").execute
-
-# Mixing scopes with other DSL calls
-results = User.simple_query
-              .by_name("John")
-              .active
-              .select(:id, :name)
-              .order(name: :asc)
-              .execute
-```
-### How It Works
-
-Each scope block (e.g. by_name) is evaluated in the context of the SimpleQuery builder, so you can call any DSL method (where, order, etc.) inside it.
-Parameterized scopes accept arguments — passed directly to the block (e.g. |name| above).
-Scopes return self, so you can chain multiple scopes or mix them with standard query methods.
-
-## Streaming Large Datasets
-
-For massive queries (millions of rows), **SimpleQuery** offers a `.stream_each` method to avoid loading the entire result set into memory. It **automatically** picks a streaming approach depending on your database adapter:
-
-- **PostgreSQL**: Uses a **server-side cursor** via `DECLARE ... FETCH`.
-- **MySQL**: Uses `mysql2` gem’s **streaming** (`stream: true, cache_rows: false, as: :hash`).
-
-```ruby
-# Example usage:
 User.simple_query
-    .where(active: true)
-    .stream_each(batch_size: 10_000) do |row|
-  # row is a struct or read-model instance
-  puts row.name
+    .active
+    .admins
+    .by_name("Jane Doe")
+    .select(:id, :name)
+    .execute
+```
+
+## Lazy execution and streaming
+
+`lazy_execute` returns an `Enumerator` over the query results:
+
+```ruby
+enumerator = User.simple_query
+                 .select(:name)
+                 .where(active: true)
+                 .lazy_execute
+
+enumerator.each do |user|
+  puts user.name
 end
+```
+
+`lazy_execute` is useful when you want enumerator-style consumption, but it still uses ActiveRecord's `select_all` internally.
+
+For large PostgreSQL or MySQL result sets, use `stream_each`:
+
+```ruby
+User.simple_query
+    .select(:id, :email)
+    .where(active: true)
+    .stream_each(batch_size: 10_000) do |user|
+  puts user.email
+end
+```
+
+Adapter behavior:
+
+- PostgreSQL: uses a server-side cursor with `DECLARE` / `FETCH`; `batch_size` controls the number of rows fetched per cursor read
+- MySQL: uses `mysql2` streaming with `stream: true`, `cache_rows: false`, and `as: :hash`; `batch_size` is accepted by the public API but does not control MySQL batching
+- Other adapters: `stream_each` raises an error
+
+## Bulk updates
+
+`bulk_update` builds and executes a set-based `UPDATE` for the current query conditions:
+
+```ruby
+User.simple_query
+    .where(active: false)
+    .bulk_update(set: { status: 0 })
+```
+
+`bulk_update` sends SQL directly through the ActiveRecord connection and does not instantiate models or run ActiveRecord callbacks. If no `where` conditions are present, it updates the entire table.
+
+## Subqueries
+
+You can use `build_query` to embed a SimpleQuery query as an Arel subquery:
+
+```ruby
+company_users = Company.simple_query
+                       .select(:user_id)
+                       .where(industry: "Technology")
+                       .build_query
+
+User.simple_query
+    .select(:name)
+    .where(User.arel_table[:id].in(company_users))
+    .execute
 ```
 
 ## Performance
 
-SimpleQuery aims to outperform standard ActiveRecord queries at scale. We’ve benchmarked **1,000,000** records on **both PostgreSQL** and **MySQL**, with the following results:
+SimpleQuery is designed for read paths where ActiveRecord model instantiation is unnecessary overhead. Returning structs or read models can reduce allocation costs for large reporting-style queries.
 
-### PostgreSQL (1,000,000 records)
-```
-🚀 Performance Results (1000,000 records):
-ActiveRecord Query:                  10.36932 seconds
-SimpleQuery Execution (Struct):      3.46136 seconds
-SimpleQuery Execution (Read model):  2.20905 seconds
+The repository includes performance specs and benchmark-oriented tests comparing ActiveRecord object loading with SimpleQuery result objects and streaming. Treat benchmark numbers as workload-specific: validate them against your database, indexes, adapter, and query shape before making production claims.
 
-----------------------------------------------------
-ActiveRecord find_each:              6.10077 seconds
-SimpleQuery stream_each:             2.75639 seconds
+## Safety notes
 
---- AR find_each Memory Report ---
-Total allocated: 1.98 GB (16,001,659 objects)
-Retained:        ~2 KB
+SimpleQuery is a query-building library, not an authorization or SQL-injection protection layer.
 
---- SimpleQuery stream_each Memory Report ---
-Total allocated: 1.38 GB (8,000,211 objects)
-Retained:        ~3 KB
-```
-- **Struct-based** approach remains the fastest, skipping model overhead.
-- **Read model** approach is still significantly faster than standard ActiveRecord while allowing domain-specific logic.
+Recommended usage:
 
-### MySQL (1,000,000 records)
-```
-🚀 Performance Results (1000,000 records):
-ActiveRecord Query:                  10.45833 seconds
-SimpleQuery Execution (Struct):      3.04655 seconds
-SimpleQuery Execution (Read model):  3.69052 seconds
-
-----------------------------------------------------
-ActiveRecord find_each:              5.04671 seconds
-SimpleQuery stream_each:             2.96602 seconds
-
---- AR find_each Memory Report ---
-Total allocated: 1.32 GB (11,001,445 objects)
-Retained:        ~2.7 KB
-
---- SimpleQuery stream_each Memory Report ---
-Total allocated: 1.22 GB (8,000,068 objects)
-Retained:        ~3.9 KB
-```
-- Even in MySQL, **Struct** was roughly **three times faster** than ActiveRecord’s overhead.
-- Read models still outperform AR, though by a narrower margin in this scenario.
+- Prefer hash, Arel, or placeholder conditions for values derived from users or external systems.
+- Treat raw SQL strings in `select`, `where`, and `custom_aggregation` as trusted-only escape hatches.
+- Keep `group_concat` separators static and trusted; they are interpolated into database-specific SQL.
+- Use Arel nodes or `Arel.sql(...)` for `having` clauses; it does not share the same condition parser as `where`.
+- Keep tenant, authorization, and visibility constraints explicit in your query code.
+- Remember that `bulk_update` bypasses model callbacks and validations, like any direct SQL update.
 
 ## Development
 
-After checking out the repo, run `bin/setup` to install dependencies. Then, run `rake spec` to run the tests. You can also run `bin/console` for an interactive prompt that will allow you to experiment.
+After checking out the repository:
+
+```bash
+bin/setup
+bundle exec rspec
+bundle exec rubocop
+```
+
+Database-sensitive behavior is tested against PostgreSQL and MySQL in CI.
+
+You can also open a console:
+
+```bash
+bin/console
+```
 
 ## Contributing
 
-Bug reports and pull requests are welcome on GitHub at https://github.com/kholdrex/simple_query. This project is intended to be a safe, welcoming space for collaboration, and contributors are expected to adhere to the [code of conduct](https://github.com/kholdrex/simple_query/blob/master/CODE_OF_CONDUCT.md).
+Bug reports and pull requests are welcome on GitHub at [kholdrex/simple_query](https://github.com/kholdrex/simple_query). Contributors are expected to follow the [Code of Conduct](CODE_OF_CONDUCT.md).
 
 ## License
 
-The gem is available as open source under the terms of the [MIT License](https://opensource.org/licenses/MIT).
+The gem is available as open source under the terms of the [MIT License](LICENSE.txt).
 
 ## Code of Conduct
 
-Everyone interacting in the SimpleQuery project's codebases, issue trackers, chat rooms and mailing lists is expected to follow the [code of conduct](https://github.com/kholdrex/simple_query/blob/master/CODE_OF_CONDUCT.md).
+Everyone interacting in the SimpleQuery project's codebases, issue trackers, chat rooms, and mailing lists is expected to follow the [Code of Conduct](CODE_OF_CONDUCT.md).
