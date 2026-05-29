@@ -4,6 +4,10 @@ All notable changes to this project are documented in this file.
 
 ## Unreleased
 
+### Changed
+- ActiveRecord 8.0 is now included in the PostgreSQL/MySQL CI matrix on Ruby 3.2.
+- ActiveRecord dependency bounds now allow the full 8.0 patch line while excluding 8.1 until it is tested.
+
 ### Fixed
 - Reusing a builder after changing the selected result shape now returns Struct rows with the correct members instead of reusing a stale Struct class.
 
