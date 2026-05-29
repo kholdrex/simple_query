@@ -402,39 +402,37 @@ RSpec.describe SimpleQuery::Builder do
     it "rebuilds Struct classes after a reused builder selects additional columns" do
       builder = User.simple_query.select(:name).where(name: "Jane Doe")
 
-      first_result = builder.execute
-      expect(first_result.first).to respond_to(:name)
-      expect(first_result.first).not_to respond_to(:email)
+      first_row = builder.execute.first
+      expect(first_row.members).to eq([:name])
 
-      second_result = builder.select(:email).execute
-      expect(second_result.first).to respond_to(:name)
-      expect(second_result.first).to respond_to(:email)
-      expect(second_result.first.email).to eq("jane@example.com")
+      second_row = builder.select(:email).execute.first
+      expect(second_row.members).to eq([:name, :email])
+      expect(second_row.class).not_to eq(first_row.class)
+      expect(second_row.email).to eq("jane@example.com")
     end
 
     it "rebuilds Struct classes after a reused builder adds aggregations" do
       builder = Company.simple_query.select(:industry).group(:industry)
 
-      first_result = builder.execute
-      expect(first_result.first.members).to include(:industry)
-      expect(first_result.first.members).not_to include(:count)
+      first_row = builder.execute.first
+      expect(first_row.members).to eq([:industry])
 
-      second_result = builder.count.execute
-      expect(second_result.first.members).to include(:industry)
-      expect(second_result.first.members).to include(:count)
+      second_row = builder.count.execute.first
+      expect(second_row.members).to eq([:industry, :count])
+      expect(second_row.class).not_to eq(first_row.class)
+      expect(second_row.count).to be_a(Numeric)
     end
 
     it "rebuilds Struct classes for lazy execution after a reused builder changes shape" do
       builder = User.simple_query.select(:name).where(name: "Jane Doe")
 
-      first_result = builder.lazy_execute.first
-      expect(first_result).to respond_to(:name)
-      expect(first_result).not_to respond_to(:email)
+      first_row = builder.lazy_execute.first
+      expect(first_row.members).to eq([:name])
 
-      second_result = builder.select(:email).lazy_execute.first
-      expect(second_result).to respond_to(:name)
-      expect(second_result).to respond_to(:email)
-      expect(second_result.email).to eq("jane@example.com")
+      second_row = builder.select(:email).lazy_execute.first
+      expect(second_row.members).to eq([:name, :email])
+      expect(second_row.class).not_to eq(first_row.class)
+      expect(second_row.email).to eq("jane@example.com")
     end
   end
 
