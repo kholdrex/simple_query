@@ -401,10 +401,10 @@ module SimpleQuery
       end
     end
 
-    def method_missing(method_name, *args, &block)
+    def method_missing(method_name, *args, **kwargs, &block)
       if (scope_block = find_scope(method_name))
-        validate_scope_arity!(method_name, scope_block, args)
-        instance_exec(*args, &scope_block)
+        validate_scope_arity!(method_name, scope_block, scope_arguments_for_validation(scope_block, args, kwargs))
+        instance_exec(*args, **kwargs, &scope_block)
         self
       else
         super
@@ -428,6 +428,12 @@ module SimpleQuery
 
       raise ArgumentError,
             "simple_scope :#{scope_name} expected #{scope_arity_description(range)}, provided #{provided}"
+    end
+
+    def scope_arguments_for_validation(scope_block, args, kwargs)
+      return args if kwargs.empty? || scope_uses_keyword_arguments?(scope_block)
+
+      args + [kwargs]
     end
 
     def scope_argument_range(scope_block)

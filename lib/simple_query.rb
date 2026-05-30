@@ -52,7 +52,10 @@ module SimpleQuery
       raise ArgumentError, "You must provide a block or a proc" if scope_body.nil?
       raise ArgumentError, "simple_scope body must respond to #to_proc" unless scope_body.respond_to?(:to_proc)
 
-      _simple_scopes[name.to_sym] = scope_body.to_proc
+      scope_proc = scope_body.to_proc
+      raise ArgumentError, "simple_scope body #to_proc must return a Proc" unless scope_proc.is_a?(Proc)
+
+      _simple_scopes[name.to_sym] = scope_proc
     end
   end
 

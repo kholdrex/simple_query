@@ -535,6 +535,22 @@ RSpec.describe SimpleQuery::Builder do
       end.to raise_error(ArgumentError, "simple_scope body must respond to #to_proc")
     end
 
+    it "rejects scope bodies whose to_proc does not return a Proc" do
+      invalid_body = Class.new do
+        def to_proc
+          :not_a_proc
+        end
+      end.new
+
+      model = Class.new do
+        include SimpleQuery
+      end
+
+      expect do
+        model.simple_scope(:invalid, invalid_body)
+      end.to raise_error(ArgumentError, "simple_scope body #to_proc must return a Proc")
+    end
+
     it "reports existing and missing scopes through standard method lookup" do
       builder = User.simple_query
 
@@ -613,6 +629,42 @@ RSpec.describe SimpleQuery::Builder do
     it "handles parameterized scope" do
       results = User.simple_query.by_name("John Smith").execute
       expect(results.map(&:name)).to eq(["John Smith"])
+    end
+
+    it "forwards keyword arguments to scope bodies" do
+      User.simple_scope(:by_status_and_admin) do |status:, admin: false|
+        where(status: status, admin: admin)
+      end
+
+      results = User.simple_query.by_status_and_admin(status: 1, admin: true).execute
+
+      expect(results.map(&:name)).to eq(["Jane Doe"])
+    ensure
+      User._simple_scopes.delete(:by_status_and_admin)
+    end
+
+    it "preserves keyword-style calls to positional hash scopes" do
+      User.simple_scope(:by_filters) do |filters|
+        where(filters)
+      end
+
+      results = User.simple_query.by_filters(status: 1, admin: true).execute
+
+      expect(results.map(&:name)).to eq(["Jane Doe"])
+    ensure
+      User._simple_scopes.delete(:by_filters)
+    end
+
+    it "counts keyword-style hashes with positional arguments for positional-only scopes" do
+      User.simple_scope(:by_name_and_filters) do |name, filters|
+        where(filters).where(name: name)
+      end
+
+      results = User.simple_query.by_name_and_filters("Jane Doe", status: 1, admin: true).execute
+
+      expect(results.map(&:name)).to eq(["Jane Doe"])
+    ensure
+      User._simple_scopes.delete(:by_name_and_filters)
     end
 
     it "chains multiple scopes" do

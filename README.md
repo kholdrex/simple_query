@@ -312,7 +312,7 @@ User.simple_query
     .execute
 ```
 
-SimpleQuery validates positional scope arguments before invoking the scope body. If a scope is called with too few or too many positional arguments, it raises `ArgumentError` with the scope name and expected argument count.
+SimpleQuery validates positional scope arguments before invoking the scope body. If a scope is called with too few or too many positional arguments, it raises `ArgumentError` with the scope name and expected argument count. For scopes that declare Ruby keyword parameters, SimpleQuery forwards keywords to the scope body and lets Ruby raise its native keyword-argument errors.
 
 ## Lazy execution and streaming
 
