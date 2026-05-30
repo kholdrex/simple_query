@@ -604,6 +604,24 @@ RSpec.describe SimpleQuery::Builder do
         expect(builder).to receive(:stream_each_postgres).with(500).and_return(nil)
         builder.stream_each(batch_size: 500) { |row| }
       end
+
+      it "rejects invalid batch sizes before executing adapter-specific SQL" do
+        builder = described_class.new(User)
+
+        expect(builder).not_to receive(:stream_each_postgres)
+        expect do
+          builder.stream_each(batch_size: "1; DROP TABLE users") { |_row| }
+        end.to raise_error(ArgumentError, "stream_each batch_size must be a positive Integer")
+      end
+
+      it "rejects non-positive batch sizes" do
+        builder = described_class.new(User)
+
+        expect(builder).not_to receive(:stream_each_postgres)
+        expect do
+          builder.stream_each(batch_size: 0) { |_row| }
+        end.to raise_error(ArgumentError, "stream_each batch_size must be a positive Integer")
+      end
     end
 
     context "when adapter is mysql" do

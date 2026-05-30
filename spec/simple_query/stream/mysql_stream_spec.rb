@@ -42,5 +42,17 @@ RSpec.describe SimpleQuery::Stream::MysqlStream do
 
       expect(rows).to eq([{ "mocked_mysql" => { "id" => 1 } }, { "mocked_mysql" => { "id" => 2 } }])
     end
+
+    it "propagates row processing errors" do
+      allow(ActiveRecord::Base).to receive_message_chain(:connection, :raw_connection).and_return(conn)
+      expect(conn).to receive(:query).with("SELECT * FROM users", stream: true, cache_rows: false, as: :hash)
+                                     .and_return(mysql_result)
+
+      allow(mysql_result).to receive(:each).and_yield({ "id" => 1 })
+
+      expect do
+        builder.stream_each_mysql { |_record| raise "consumer failed" }
+      end.to raise_error("consumer failed")
+    end
   end
 end

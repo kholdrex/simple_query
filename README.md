@@ -346,6 +346,12 @@ Adapter behavior:
 - MySQL: uses `mysql2` streaming with `stream: true`, `cache_rows: false`, and `as: :hash`; `batch_size` is accepted by the public API but does not control MySQL batching
 - Other adapters: `stream_each` raises an error
 
+Failure behavior:
+
+- `batch_size` must be a positive integer; invalid values raise `ArgumentError` before any adapter-specific SQL runs
+- PostgreSQL streaming wraps the cursor in a transaction and rolls back if declaring, fetching, or row processing fails
+- MySQL streaming uses the mysql2 driver's streaming result handling; query and row processing errors are propagated to the caller
+
 ## Bulk updates
 
 `bulk_update` builds and executes a set-based `UPDATE` for the current query conditions:
