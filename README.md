@@ -382,7 +382,7 @@ The repository includes performance specs and benchmark-oriented tests comparing
 
 ## Safety notes
 
-SimpleQuery is a query-building library, not an authorization or SQL-injection protection layer.
+SimpleQuery is a query-building library, not an authorization or SQL-injection protection layer. It exposes both parameterized condition helpers and raw SQL escape hatches; choose the narrowest API that fits the value source.
 
 Recommended usage:
 
@@ -392,6 +392,50 @@ Recommended usage:
 - Use Arel nodes or `Arel.sql(...)` for `having` clauses; it does not share the same condition parser as `where`.
 - Keep tenant, authorization, and visibility constraints explicit in your query code.
 - Remember that `bulk_update` bypasses model callbacks and validations, like any direct SQL update.
+
+### Parameterized values
+
+Use hash conditions for simple equality predicates and array placeholder conditions for SQL fragments that include external values:
+
+```ruby
+# Equality predicates are built through Arel.
+User.simple_query.where(email: params[:email]).execute
+
+# SQL fragments with external values should use ActiveRecord-style placeholders.
+User.simple_query
+    .where(["name ILIKE ?", "%#{params[:query]}%"])
+    .execute
+
+User.simple_query
+    .where(["email = :email", { email: params[:email] }])
+    .execute
+```
+
+Do not interpolate external values into raw strings:
+
+```ruby
+# Unsafe: params[:query] is part of the SQL string itself.
+User.simple_query.where("name ILIKE '%#{params[:query]}%'").execute
+```
+
+### Trusted SQL escape hatches
+
+Some APIs intentionally accept SQL fragments because they are meant for expressions that Arel or SimpleQuery helpers do not model:
+
+```ruby
+# Trusted expression: fixed by the application, not assembled from request input.
+User.simple_query.select("LOWER(email) AS normalized_email").execute
+
+Company.simple_query
+       .custom_aggregation("COUNT(DISTINCT industry)", "unique_industries")
+       .execute
+```
+
+Keep aliases, custom aggregation expressions, raw `select` strings, raw `where` strings, `having` expressions, and `group_concat` separators static or otherwise trusted. If a fragment must include external values, bind them before passing the query to SimpleQuery or express the condition with hash, Arel, or placeholder `where` syntax.
+
+### Direct updates
+
+`bulk_update` is a set-based SQL update. It is useful for maintenance jobs and data workflows where callbacks are intentionally skipped, but it will not run ActiveRecord validations, callbacks, authorization checks, or per-record business logic. Always add the intended `where` conditions before calling it unless the whole table is the target.
 
 ## Development
 
