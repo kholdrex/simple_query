@@ -525,33 +525,154 @@ RSpec.describe SimpleQuery::Builder do
   end
 
   describe "Scopes" do
+    it "rejects non-callable simple_scope bodies at definition time" do
+      model = Class.new do
+        include SimpleQuery
+      end
+
+      expect do
+        model.simple_scope(:invalid, Object.new)
+      end.to raise_error(ArgumentError, "simple_scope body must respond to #to_proc")
+    end
+
+    it "rejects scope bodies whose to_proc does not return a Proc" do
+      invalid_body = Class.new do
+        def to_proc
+          :not_a_proc
+        end
+      end.new
+
+      model = Class.new do
+        include SimpleQuery
+      end
+
+      expect do
+        model.simple_scope(:invalid, invalid_body)
+      end.to raise_error(ArgumentError, "simple_scope body #to_proc must return a Proc")
+    end
+
+    it "reports existing and missing scopes through standard method lookup" do
+      builder = User.simple_query
+
+      expect(builder).to respond_to(:active)
+      expect(builder).not_to respond_to(:missing_scope)
+      expect do
+        builder.missing_scope
+      end.to raise_error(NoMethodError, /missing_scope/)
+    end
+
+    it "raises a diagnostic ArgumentError when scope arguments have the wrong arity" do
+      expect do
+        User.simple_query.by_name
+      end.to raise_error(ArgumentError, /simple_scope :by_name expected exactly 1 argument, provided 0/)
+    end
+
+    it "allows optional scope arguments" do
+      User.simple_scope(:optional_status) { |status = 1| where(status: status) }
+
+      expect(User.simple_query.optional_status.execute.map(&:name)).to contain_exactly("Jane Doe", "John Smith")
+      expect(User.simple_query.optional_status(999).execute).to be_empty
+    ensure
+      User._simple_scopes.delete(:optional_status)
+    end
+
+    it "raises a diagnostic ArgumentError when too many optional scope arguments are provided" do
+      User.simple_scope(:optional_status) { |status = 1| where(status: status) }
+
+      expect do
+        User.simple_query.optional_status(1, 2)
+      end.to raise_error(ArgumentError, /simple_scope :optional_status expected 0 to 1 argument, provided 2/)
+    ensure
+      User._simple_scopes.delete(:optional_status)
+    end
+
+    it "allows rest arguments in scopes" do
+      User.simple_scope(:select_fields) do |*fields|
+        select(*fields)
+      end
+
+      result = User.simple_query.select_fields(:name, :email).where(name: "Jane Doe").execute.first
+
+      expect(result.members).to eq([:name, :email])
+    ensure
+      User._simple_scopes.delete(:select_fields)
+    end
+
+    it "returns the builder when a scope body returns nil" do
+      User.simple_scope(:returns_nil) { nil }
+      builder = User.simple_query
+
+      expect(builder.returns_nil).to equal(builder)
+    ensure
+      User._simple_scopes.delete(:returns_nil)
+    end
+
+    it "returns the builder when a scope body returns another value" do
+      User.simple_scope(:returns_value) { "ignored" }
+      builder = User.simple_query
+
+      expect(builder.returns_value).to equal(builder)
+    ensure
+      User._simple_scopes.delete(:returns_value)
+    end
+
     it "filters records by a parameterless scope (active)" do
-      # The 'Inactive Guy' should not appear in results
       results = User.simple_query.active.execute
       expect(results.map(&:name)).to contain_exactly("Jane Doe", "John Smith")
     end
 
     it "filters records by another parameterless scope (admins)" do
-      # Only Jane Doe is admin => see above seed data
       results = User.simple_query.admins.execute
       expect(results.map(&:name)).to eq(["Jane Doe"])
     end
 
     it "handles parameterized scope" do
-      # We search by name using the by_name scope
       results = User.simple_query.by_name("John Smith").execute
       expect(results.map(&:name)).to eq(["John Smith"])
     end
 
+    it "forwards keyword arguments to scope bodies" do
+      User.simple_scope(:by_status_and_admin) do |status:, admin: false|
+        where(status: status, admin: admin)
+      end
+
+      results = User.simple_query.by_status_and_admin(status: 1, admin: true).execute
+
+      expect(results.map(&:name)).to eq(["Jane Doe"])
+    ensure
+      User._simple_scopes.delete(:by_status_and_admin)
+    end
+
+    it "preserves keyword-style calls to positional hash scopes" do
+      User.simple_scope(:by_filters) do |filters|
+        where(filters)
+      end
+
+      results = User.simple_query.by_filters(status: 1, admin: true).execute
+
+      expect(results.map(&:name)).to eq(["Jane Doe"])
+    ensure
+      User._simple_scopes.delete(:by_filters)
+    end
+
+    it "counts keyword-style hashes with positional arguments for positional-only scopes" do
+      User.simple_scope(:by_name_and_filters) do |name, filters|
+        where(filters).where(name: name)
+      end
+
+      results = User.simple_query.by_name_and_filters("Jane Doe", status: 1, admin: true).execute
+
+      expect(results.map(&:name)).to eq(["Jane Doe"])
+    ensure
+      User._simple_scopes.delete(:by_name_and_filters)
+    end
+
     it "chains multiple scopes" do
-      # 'Jane Doe' is both active and an admin
-      # 'John Smith' is active but not an admin
       results = User.simple_query.active.admins.execute
       expect(results.map(&:name)).to eq(["Jane Doe"])
     end
 
     it "chains scopes with additional DSL methods" do
-      # Filter by :by_name, then check if it's active, and then select
       results = User.simple_query
                     .by_name("Jane Doe")
                     .active

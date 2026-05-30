@@ -401,9 +401,10 @@ module SimpleQuery
       end
     end
 
-    def method_missing(method_name, *args, &block)
+    def method_missing(method_name, *args, **kwargs, &block)
       if (scope_block = find_scope(method_name))
-        instance_exec(*args, &scope_block)
+        validate_scope_arity!(method_name, scope_block, scope_arguments_for_validation(scope_block, args, kwargs))
+        instance_exec(*args, **kwargs, &scope_block)
         self
       else
         super
@@ -418,6 +419,70 @@ module SimpleQuery
       return unless model.respond_to?(:_simple_scopes)
 
       model._simple_scopes[method_name.to_sym]
+    end
+
+    def validate_scope_arity!(scope_name, scope_block, args)
+      range = scope_argument_range(scope_block)
+      provided = args.length
+      return if scope_arity_matches?(range, provided)
+
+      raise ArgumentError,
+            "simple_scope :#{scope_name} expected #{scope_arity_description(range)}, provided #{provided}"
+    end
+
+    def scope_arguments_for_validation(scope_block, args, kwargs)
+      return args if kwargs.empty? || scope_uses_keyword_arguments?(scope_block)
+
+      args + [kwargs]
+    end
+
+    def scope_argument_range(scope_block)
+      # Keyword argument arity has Ruby-version-specific edge cases; let Ruby raise its native error.
+      return nil if scope_uses_keyword_arguments?(scope_block)
+
+      minimum = minimum_scope_arguments(scope_block)
+      maximum = maximum_scope_arguments(scope_block)
+
+      [minimum, maximum]
+    end
+
+    def scope_uses_keyword_arguments?(scope_block)
+      scope_block.parameters.any? { |kind, _name| [:key, :keyreq, :keyrest].include?(kind) }
+    end
+
+    def minimum_scope_arguments(scope_block)
+      arity = scope_block.arity
+      return arity if arity >= 0
+
+      -arity - 1
+    end
+
+    def maximum_scope_arguments(scope_block)
+      parameters = scope_block.parameters
+      return nil if parameters.any? { |kind, _name| kind == :rest }
+
+      parameters.count { |kind, _name| [:req, :opt].include?(kind) }
+    end
+
+    def scope_arity_matches?(range, provided)
+      return true if range.nil?
+
+      minimum, maximum = range
+      return provided >= minimum if maximum.nil?
+
+      provided.between?(minimum, maximum)
+    end
+
+    def scope_arity_description(range)
+      minimum, maximum = range
+      return "at least #{argument_count_description(minimum)}" if maximum.nil?
+      return "exactly #{argument_count_description(minimum)}" if minimum == maximum
+
+      "#{minimum} to #{argument_count_description(maximum)}"
+    end
+
+    def argument_count_description(count)
+      "#{count} #{count == 1 ? "argument" : "arguments"}"
     end
   end
 end
