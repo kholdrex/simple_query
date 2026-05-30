@@ -46,12 +46,13 @@ module SimpleQuery
     end
 
     def simple_scope(name, body = nil, &block)
-      raise ArgumentError, "Pass either a proc/lambda or a block, not both" if body && block_given?
+      raise ArgumentError, "Pass either a proc/lambda or a block, not both" if !body.nil? && block_given?
 
-      scope_body = body || block
-      raise ArgumentError, "You must provide a block or a proc" unless scope_body
+      scope_body = body.nil? ? block : body
+      raise ArgumentError, "You must provide a block or a proc" if scope_body.nil?
+      raise ArgumentError, "simple_scope body must respond to #to_proc" unless scope_body.respond_to?(:to_proc)
 
-      _simple_scopes[name.to_sym] = scope_body
+      _simple_scopes[name.to_sym] = scope_body.to_proc
     end
   end
 

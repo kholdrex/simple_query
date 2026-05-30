@@ -312,6 +312,8 @@ User.simple_query
     .execute
 ```
 
+SimpleQuery validates positional scope arguments before invoking the scope body. If a scope is called with too few or too many positional arguments, it raises `ArgumentError` with the scope name and expected argument count.
+
 ## Lazy execution and streaming
 
 `lazy_execute` returns an `Enumerator` over the query results:
