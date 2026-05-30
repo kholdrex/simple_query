@@ -5,6 +5,8 @@ module SimpleQuery
     module PostgresStream
       # rubocop:disable Metrics/MethodLength
       def stream_each_postgres(batch_size, &block)
+        validate_postgres_stream_batch_size!(batch_size)
+
         select_sql = cached_sql
 
         conn = ActiveRecord::Base.connection.raw_connection
@@ -39,6 +41,12 @@ module SimpleQuery
       # rubocop:enable Metrics/MethodLength
 
       private
+
+      def validate_postgres_stream_batch_size!(batch_size)
+        return if batch_size.is_a?(Integer) && batch_size.positive?
+
+        raise ArgumentError, "stream_each batch_size must be a positive Integer"
+      end
 
       def build_row_object(pg_row)
         if @read_model_class

@@ -204,6 +204,8 @@ module SimpleQuery
     end
 
     def stream_each(batch_size: 1000, &block)
+      validate_stream_batch_size!(batch_size)
+
       adapter = ActiveRecord::Base.connection.adapter_name.downcase
       if adapter.include?("postgres")
         stream_each_postgres(batch_size, &block)
@@ -255,6 +257,12 @@ module SimpleQuery
     end
 
     private
+
+    def validate_stream_batch_size!(batch_size)
+      return if batch_size.is_a?(Integer) && batch_size.positive?
+
+      raise ArgumentError, "stream_each batch_size must be a positive Integer"
+    end
 
     def build_select_expressions
       expressions = []
