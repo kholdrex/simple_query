@@ -386,7 +386,29 @@ User.simple_query
 
 SimpleQuery is designed for read paths where ActiveRecord model instantiation is unnecessary overhead. Returning structs or read models can reduce allocation costs for large reporting-style queries.
 
-The repository includes performance specs and benchmark-oriented tests comparing ActiveRecord object loading with SimpleQuery result objects and streaming. Treat benchmark numbers as workload-specific: validate them against your database, indexes, adapter, and query shape before making production claims.
+The repository includes an optional benchmark harness comparing ActiveRecord object loading and `update_all` with SimpleQuery structs, read models, and `bulk_update`. Treat benchmark numbers as workload-specific: validate them against your database, indexes, adapter, Ruby version, and query shape before making production claims.
+
+Run the reproducible local benchmark with:
+
+```sh
+bundle exec rake benchmark:reproducible
+```
+
+The harness uses SQLite by default, seeds deterministic data, warms up and repeats each timing measurement, and prints JSON with environment metadata plus timing results. If `memory_profiler` is available in your development bundle, the JSON also includes single-run allocation profiles for the read-path scenarios. Tune the workload with environment variables:
+
+```sh
+BENCHMARK_ROWS=50000 BENCHMARK_WARMUP=3 BENCHMARK_RUNS=10 \
+  bundle exec rake benchmark:reproducible
+```
+
+Available variables:
+
+- `BENCHMARK_ROWS` (default: `10000`) controls the number of users and matching companies seeded.
+- `BENCHMARK_WARMUP` (default: `2`) controls warmup iterations before samples are collected.
+- `BENCHMARK_RUNS` (default: `5`) controls the number of timed samples per scenario.
+- `BENCHMARK_DATABASE` (default: `:memory:`) can point at a SQLite database file if you want to inspect the generated benchmark-specific tables. The harness drops and recreates `simple_query_benchmark_users` and `simple_query_benchmark_companies` in that database on every run.
+
+Use captured benchmark output only as a reproducibility artifact. Do not compare runs from different hardware, databases, Ruby versions, or dependency sets as if they were equivalent.
 
 ## Safety notes
 
