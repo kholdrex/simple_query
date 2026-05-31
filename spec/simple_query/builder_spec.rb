@@ -40,6 +40,71 @@ RSpec.describe SimpleQuery::Builder do
       expect(result.map(&:name)).to contain_exactly("Jane Doe", "John Smith")
     end
 
+    it "rebuilds SQL and result structs when a builder is reused with a different select list" do
+      builder = User.simple_query.select(:name)
+
+      first_result = builder.execute
+      expect(first_result.first).to respond_to(:name)
+      expect(first_result.first).not_to respond_to(:email)
+
+      second_result = builder.select(:email).execute
+      expect(second_result.first.class).not_to equal(first_result.first.class)
+      expect(second_result.first).to respond_to(:name)
+      expect(second_result.first).to respond_to(:email)
+      expect(second_result.map(&:email)).to contain_exactly("jane@example.com", "john@example.com")
+    end
+
+    it "rebuilds result objects when a reused builder switches to read-model mapping" do
+      builder = User.simple_query.select(:name)
+
+      struct_result = builder.execute
+      expect(struct_result.first).to be_a(Struct)
+      expect(struct_result.map(&:name)).to contain_exactly("Jane Doe", "John Smith")
+
+      read_model_result = builder.map_to(MyUserReadModel).execute
+      expect(read_model_result.first).to be_a(MyUserReadModel)
+      expect(read_model_result.map(&:full_name)).to contain_exactly("Jane Doe", "John Smith")
+      expect(read_model_result.map(&:identifier)).to contain_exactly(nil, nil)
+    end
+
+    it "rebuilds SQL when a reused builder adds another aggregation" do
+      builder = User.simple_query.count(:id, alias_name: "user_count")
+
+      first_result = builder.execute
+      expect(first_result.first.user_count).to eq(User.count)
+      expect(first_result.first).not_to respond_to(:total_status)
+
+      second_result = builder.sum(:status, alias_name: "total_status").execute
+      expect(second_result.first.user_count).to eq(User.count)
+      expect(second_result.first.total_status).to eq(User.sum(:status))
+    end
+
+    it "rebuilds SQL when a reused builder changes from an aggregate to a grouped aggregate" do
+      builder = User.simple_query.count(:id, alias_name: "user_count")
+
+      first_result = builder.execute
+      expect(first_result.first.user_count).to eq(User.count)
+      expect(first_result.first).not_to respond_to(:active)
+
+      second_result = builder.select(:active).group(:active).execute
+      expect(second_result.first).to respond_to(:active)
+      expect(second_result.sum(&:user_count)).to eq(User.count)
+    end
+
+    it "rebuilds lazy execution results after a reused builder changes shape" do
+      builder = User.simple_query.select(:name)
+
+      first_result = builder.lazy_execute.to_a
+      expect(first_result.first).to respond_to(:name)
+      expect(first_result.first).not_to respond_to(:email)
+
+      second_result = builder.select(:email).lazy_execute.to_a
+      expect(second_result.first.class).not_to equal(first_result.first.class)
+      expect(second_result.first).to respond_to(:name)
+      expect(second_result.first).to respond_to(:email)
+      expect(second_result.map(&:email)).to contain_exactly("jane@example.com", "john@example.com")
+    end
+
     it "handles joins correctly with explicit foreign keys" do
       result = User.simple_query
                    .select(:name, :email)
