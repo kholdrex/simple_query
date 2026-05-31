@@ -47,12 +47,15 @@ module SimpleQueryBenchmark # rubocop:disable Metrics/ModuleLength
   end
 
   def integer_env(name, default)
-    value = Integer(ENV.fetch(name, default).to_s, 10)
+    value = begin
+      Integer(ENV.fetch(name, default).to_s, 10)
+    rescue ArgumentError
+      raise ArgumentError, "#{name} must be a positive integer"
+    end
+
     raise ArgumentError, "#{name} must be positive" unless value.positive?
 
     value
-  rescue ArgumentError
-    raise ArgumentError, "#{name} must be a positive integer"
   end
 
   def setup_database(config)
@@ -206,12 +209,15 @@ module SimpleQueryBenchmark # rubocop:disable Metrics/ModuleLength
   end
 
   def memory_results
-    return "memory_profiler unavailable" unless defined?(MemoryProfiler)
+    return { available: false, reason: "memory_profiler unavailable" } unless defined?(MemoryProfiler)
 
     {
-      active_record_objects: memory_profile { active_record_objects },
-      simple_query_structs: memory_profile { simple_query_structs },
-      simple_query_read_models: memory_profile { simple_query_read_models }
+      available: true,
+      profiles: {
+        active_record_objects: memory_profile { active_record_objects },
+        simple_query_structs: memory_profile { simple_query_structs },
+        simple_query_read_models: memory_profile { simple_query_read_models }
+      }
     }
   end
 

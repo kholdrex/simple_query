@@ -12,7 +12,8 @@ RuboCop::RakeTask.new
 namespace :benchmark do
   desc "Run the optional reproducible SimpleQuery benchmark harness"
   task :reproducible do
-    $LOAD_PATH.unshift File.expand_path("lib", __dir__)
+    lib_path = File.expand_path("lib", __dir__)
+    $LOAD_PATH.unshift(lib_path) unless $LOAD_PATH.include?(lib_path)
     require_relative "benchmark/simple_query_benchmark"
     SimpleQueryBenchmark.run
   end
