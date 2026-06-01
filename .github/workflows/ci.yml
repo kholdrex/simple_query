@@ -36,7 +36,7 @@ jobs:
           - ruby-version: "3.0"
             ar-gemfile: "activerecord7.2"
           # ActiveRecord 7.0 is covered through Ruby 3.2; newer Rubies are
-          # covered by the Rails versions that support them directly.
+          # covered by the ActiveRecord versions that support them directly.
           - ruby-version: "3.3"
             ar-gemfile: "activerecord7.0"
           - ruby-version: "3.4"
@@ -117,7 +117,7 @@ jobs:
           - ruby-version: "3.0"
             ar-gemfile: "activerecord7.2"
           # ActiveRecord 7.0 is covered through Ruby 3.2; newer Rubies are
-          # covered by the Rails versions that support them directly.
+          # covered by the ActiveRecord versions that support them directly.
           - ruby-version: "3.3"
             ar-gemfile: "activerecord7.0"
           - ruby-version: "3.4"
