@@ -27,7 +27,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        ruby-version: ["2.7", "3.0", "3.1", "3.2"]
+        ruby-version: ["2.7", "3.0", "3.1", "3.2", "3.3", "3.4"]
         ar-gemfile: ["activerecord7.0", "activerecord7.1", "activerecord7.2", "activerecord8.0"]
         exclude:
           # ActiveRecord 7.2 => requires Ruby >= 3.1
@@ -35,6 +35,12 @@ jobs:
             ar-gemfile: "activerecord7.2"
           - ruby-version: "3.0"
             ar-gemfile: "activerecord7.2"
+          # ActiveRecord 7.0 is covered through Ruby 3.2; newer Rubies are
+          # covered by the Rails versions that support them directly.
+          - ruby-version: "3.3"
+            ar-gemfile: "activerecord7.0"
+          - ruby-version: "3.4"
+            ar-gemfile: "activerecord7.0"
           # ActiveRecord 8.0 => requires Ruby >= 3.2
           - ruby-version: "2.7"
             ar-gemfile: "activerecord8.0"
@@ -103,13 +109,19 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        ruby-version: ["2.7", "3.0", "3.1", "3.2"]
+        ruby-version: ["2.7", "3.0", "3.1", "3.2", "3.3", "3.4"]
         ar-gemfile: ["activerecord7.0", "activerecord7.1", "activerecord7.2", "activerecord8.0"]
         exclude:
           - ruby-version: "2.7"
             ar-gemfile: "activerecord7.2"
           - ruby-version: "3.0"
             ar-gemfile: "activerecord7.2"
+          # ActiveRecord 7.0 is covered through Ruby 3.2; newer Rubies are
+          # covered by the Rails versions that support them directly.
+          - ruby-version: "3.3"
+            ar-gemfile: "activerecord7.0"
+          - ruby-version: "3.4"
+            ar-gemfile: "activerecord7.0"
           # ActiveRecord 8.0 => requires Ruby >= 3.2
           - ruby-version: "2.7"
             ar-gemfile: "activerecord8.0"
