@@ -124,7 +124,8 @@ User.simple_query
 Array conditions are sanitized through ActiveRecord's `sanitize_sql_array`, so they are the preferred way to use SQL fragments with external or user-provided values:
 
 ```ruby
-search_pattern = "%#{params[:search]}%"
+escaped_search = ActiveRecord::Base.sanitize_sql_like(params[:search].to_s)
+search_pattern = "%#{escaped_search}%"
 
 User.simple_query
     .where(["name LIKE ?", search_pattern])

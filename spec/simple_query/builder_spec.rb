@@ -454,9 +454,11 @@ RSpec.describe SimpleQuery::Builder do
     it "sanitizes placeholder condition values instead of treating them as SQL" do
       expect(User.count).to be_positive
 
+      injection_sentinel = "__simple_query_placeholder_injection_sentinel_DO_NOT_CREATE__' OR 1=1 --"
+
       result = User.simple_query
                    .select(:name)
-                   .where(["name = ?", "Jane Doe' OR 1=1 --"])
+                   .where(["name = ?", injection_sentinel])
                    .execute
 
       expect(result).to be_empty
