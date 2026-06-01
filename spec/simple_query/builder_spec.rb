@@ -450,6 +450,17 @@ RSpec.describe SimpleQuery::Builder do
 
       expect(result.size).to eq(1)
     end
+
+    it "sanitizes placeholder condition values instead of treating them as SQL" do
+      expect(User.count).to be_positive
+
+      result = User.simple_query
+                   .select(:name)
+                   .where(["name = ?", "Jane Doe' OR 1=1 --"])
+                   .execute
+
+      expect(result).to be_empty
+    end
   end
 
   describe "#lazy_execute" do

@@ -121,17 +121,21 @@ User.simple_query
 
 ### Placeholder conditions
 
-Array conditions are sanitized through ActiveRecord's `sanitize_sql_array`, so they are the preferred way to use SQL fragments with user-provided values:
+Array conditions are sanitized through ActiveRecord's `sanitize_sql_array`, so they are the preferred way to use SQL fragments with external or user-provided values:
 
 ```ruby
+search_pattern = "%#{params[:search]}%"
+
 User.simple_query
-    .where(["name LIKE ?", "%Jane%"])
+    .where(["name LIKE ?", search_pattern])
     .execute
 
 User.simple_query
-    .where(["email = :email", { email: "jane@example.com" }])
+    .where(["email = :email", { email: params[:email] }])
     .execute
 ```
+
+Keep the SQL fragment itself static and pass dynamic values as positional or named placeholders. Do not interpolate request parameters, form values, or other untrusted input into the SQL string.
 
 ### Raw SQL conditions
 
@@ -143,7 +147,7 @@ User.simple_query
     .execute
 ```
 
-Only use raw SQL strings with trusted input. For external or user-provided values, prefer hash, Arel, or placeholder conditions.
+Raw SQL strings are an escape hatch for trusted, application-owned SQL only. If any value comes from a user, request, file, or external service, use hash, Arel, or placeholder conditions instead.
 
 ## Joins
 
