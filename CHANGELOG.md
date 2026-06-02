@@ -14,6 +14,7 @@ All notable changes to this project are documented in this file.
 
 ### Fixed
 - Reusing a builder after changing the selected result shape now returns Struct rows with the correct members instead of reusing a stale Struct class.
+- Unsupported `stream_each` adapters now raise `SimpleQuery::UnsupportedAdapterError` with the adapter name instead of a generic runtime error.
 
 ## [0.5.0] - 2025-08-29
 

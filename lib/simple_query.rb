@@ -19,6 +19,8 @@ require_relative "simple_query/clauses/aggregation_clause"
 module SimpleQuery
   extend ActiveSupport::Concern
 
+  class UnsupportedAdapterError < StandardError; end
+
   class Configuration
     attr_accessor :auto_include_ar
 
