@@ -13,7 +13,7 @@ module SimpleQuery
         cursor_name = "simple_query_cursor_#{object_id}"
 
         cursor_declared = false
-        success_path_close_started = false
+        cursor_close_started = false
 
         begin
           conn.exec("BEGIN")
@@ -31,11 +31,11 @@ module SimpleQuery
             end
           end
 
-          success_path_close_started = true
+          cursor_close_started = true
           conn.exec("CLOSE #{cursor_name}")
           conn.exec("COMMIT")
         rescue StandardError
-          close_postgres_stream_cursor(conn, cursor_name) if cursor_declared && !success_path_close_started
+          close_postgres_stream_cursor(conn, cursor_name) if cursor_declared && !cursor_close_started
           rollback_postgres_stream_transaction(conn)
           raise
         end
