@@ -356,7 +356,7 @@ Adapter behavior:
 Failure behavior:
 
 - `batch_size` must be a positive integer; invalid values raise `ArgumentError` before any adapter-specific SQL runs
-- PostgreSQL streaming wraps the cursor in a transaction and rolls back if declaring, fetching, or row processing fails
+- PostgreSQL streaming wraps the cursor in a transaction, closes a declared cursor before rollback when row processing fails, attempts cursor cleanup before rollback on fetch failures, and propagates the original error
 - MySQL streaming uses the mysql2 driver's streaming result handling; query and row processing errors are propagated to the caller
 
 ## Bulk updates

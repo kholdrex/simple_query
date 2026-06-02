@@ -62,6 +62,27 @@ RSpec.describe SimpleQuery::Stream::PostgresStream do
       end.to raise_error(ArgumentError, "stream_each batch_size must be a positive Integer")
     end
 
+    it "rolls back and propagates a successful-path cursor close failure" do
+      expect(conn).to receive(:exec).with("BEGIN").ordered
+      expect(conn).to receive(:exec)
+        .with("DECLARE simple_query_cursor_#{builder.object_id} NO SCROLL CURSOR FOR SELECT * FROM users")
+        .ordered
+
+      fetch_result = double("PGResult", ntuples: 0)
+      expect(conn).to receive(:exec).with("FETCH 100 FROM simple_query_cursor_#{builder.object_id}")
+                                    .ordered.and_return(fetch_result)
+      expect(conn).to receive(:exec).with("CLOSE simple_query_cursor_#{builder.object_id}")
+                                    .ordered.and_raise("close failed")
+      expect(conn).to receive(:exec).with("ROLLBACK").ordered
+      expect(conn).not_to receive(:exec).with("COMMIT")
+
+      allow(ActiveRecord::Base).to receive_message_chain(:connection, :raw_connection).and_return(conn)
+
+      expect do
+        builder.stream_each_postgres(100) { |_record| }
+      end.to raise_error("close failed")
+    end
+
     it "rolls back if declaring the cursor fails" do
       expect(conn).to receive(:exec).with("BEGIN").ordered
       expect(conn).to receive(:exec).with(/DECLARE simple_query_cursor_\d+ NO SCROLL CURSOR FOR SELECT \* FROM users/)
@@ -75,16 +96,16 @@ RSpec.describe SimpleQuery::Stream::PostgresStream do
       end.to raise_error("Boom!")
     end
 
-    it "rolls back if fetching from the cursor fails" do
+    it "closes the cursor and rolls back if fetching from the cursor fails" do
       expect(conn).to receive(:exec).with("BEGIN").ordered
       expect(conn).to receive(:exec)
         .with("DECLARE simple_query_cursor_#{builder.object_id} NO SCROLL CURSOR FOR SELECT * FROM users")
         .ordered
       expect(conn).to receive(:exec).with("FETCH 100 FROM simple_query_cursor_#{builder.object_id}")
-                                    .and_raise("fetch failed")
-      expect(conn).not_to receive(:exec).with("CLOSE simple_query_cursor_#{builder.object_id}")
+                                    .ordered.and_raise("fetch failed")
+      expect(conn).to receive(:exec).with("CLOSE simple_query_cursor_#{builder.object_id}").ordered
+      expect(conn).to receive(:exec).with("ROLLBACK").ordered
       expect(conn).not_to receive(:exec).with("COMMIT")
-      expect(conn).to receive(:exec).with("ROLLBACK")
 
       allow(ActiveRecord::Base).to receive_message_chain(:connection, :raw_connection).and_return(conn)
 
@@ -93,7 +114,26 @@ RSpec.describe SimpleQuery::Stream::PostgresStream do
       end.to raise_error("fetch failed")
     end
 
-    it "rolls back and preserves the original error if row processing fails" do
+    it "ignores cleanup close failures and preserves the original fetch error" do
+      expect(conn).to receive(:exec).with("BEGIN").ordered
+      expect(conn).to receive(:exec)
+        .with("DECLARE simple_query_cursor_#{builder.object_id} NO SCROLL CURSOR FOR SELECT * FROM users")
+        .ordered
+      expect(conn).to receive(:exec).with("FETCH 100 FROM simple_query_cursor_#{builder.object_id}")
+                                    .ordered.and_raise("fetch failed")
+      expect(conn).to receive(:exec).with("CLOSE simple_query_cursor_#{builder.object_id}")
+                                    .ordered.and_raise("close failed")
+      expect(conn).to receive(:exec).with("ROLLBACK").ordered
+      expect(conn).not_to receive(:exec).with("COMMIT")
+
+      allow(ActiveRecord::Base).to receive_message_chain(:connection, :raw_connection).and_return(conn)
+
+      expect do
+        builder.stream_each_postgres(100) { |_record| }
+      end.to raise_error("fetch failed")
+    end
+
+    it "closes the cursor, rolls back, and preserves the original error if row processing fails" do
       expect(conn).to receive(:exec).with("BEGIN").ordered
       expect(conn).to receive(:exec)
         .with("DECLARE simple_query_cursor_#{builder.object_id} NO SCROLL CURSOR FOR SELECT * FROM users")
@@ -103,10 +143,10 @@ RSpec.describe SimpleQuery::Stream::PostgresStream do
       allow(fetch_result).to receive(:each).and_yield("row1")
 
       expect(conn).to receive(:exec).with("FETCH 100 FROM simple_query_cursor_#{builder.object_id}")
-                                    .and_return(fetch_result)
-      expect(conn).not_to receive(:exec).with("CLOSE simple_query_cursor_#{builder.object_id}")
+                                    .ordered.and_return(fetch_result)
+      expect(conn).to receive(:exec).with("CLOSE simple_query_cursor_#{builder.object_id}").ordered
+      expect(conn).to receive(:exec).with("ROLLBACK").ordered
       expect(conn).not_to receive(:exec).with("COMMIT")
-      expect(conn).to receive(:exec).with("ROLLBACK")
 
       allow(ActiveRecord::Base).to receive_message_chain(:connection, :raw_connection).and_return(conn)
 
