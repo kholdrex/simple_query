@@ -212,7 +212,9 @@ module SimpleQuery
       elsif adapter.include?("mysql")
         stream_each_mysql(&block)
       else
-        raise UnsupportedAdapterError, "stream_each is only implemented for PostgreSQL and MySQL adapters (current adapter: #{adapter})"
+        message = "stream_each is only implemented for PostgreSQL and MySQL adapters " \
+                  "(current adapter: #{adapter})"
+        raise UnsupportedAdapterError, message
       end
     end
 
