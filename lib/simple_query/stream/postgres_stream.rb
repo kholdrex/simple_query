@@ -12,10 +12,14 @@ module SimpleQuery
         conn = ActiveRecord::Base.connection.raw_connection
         cursor_name = "simple_query_cursor_#{object_id}"
 
+        cursor_declared = false
+        cursor_close_started = false
+
         begin
           conn.exec("BEGIN")
           declare_sql = "DECLARE #{cursor_name} NO SCROLL CURSOR FOR #{select_sql}"
           conn.exec(declare_sql)
+          cursor_declared = true
 
           loop do
             res = conn.exec("FETCH #{batch_size} FROM #{cursor_name}")
@@ -27,15 +31,13 @@ module SimpleQuery
             end
           end
 
+          cursor_close_started = true
           conn.exec("CLOSE #{cursor_name}")
           conn.exec("COMMIT")
-        rescue StandardError => e
-          begin
-            conn.exec("ROLLBACK")
-          rescue StandardError
-            nil
-          end
-          raise e
+        rescue StandardError
+          close_postgres_stream_cursor(conn, cursor_name) if cursor_declared && !cursor_close_started
+          rollback_postgres_stream_transaction(conn)
+          raise
         end
       end
       # rubocop:enable Metrics/MethodLength
@@ -46,6 +48,18 @@ module SimpleQuery
         return if batch_size.is_a?(Integer) && batch_size.positive?
 
         raise ArgumentError, "stream_each batch_size must be a positive Integer"
+      end
+
+      def close_postgres_stream_cursor(conn, cursor_name)
+        conn.exec("CLOSE #{cursor_name}")
+      rescue StandardError
+        nil
+      end
+
+      def rollback_postgres_stream_transaction(conn)
+        conn.exec("ROLLBACK")
+      rescue StandardError
+        nil
       end
 
       def build_row_object(pg_row)

@@ -13,6 +13,7 @@ All notable changes to this project are documented in this file.
 - `simple_scope` now rejects invalid scope bodies at definition time.
 
 ### Fixed
+- PostgreSQL `stream_each` now closes a declared cursor before rollback when row processing fails and attempts cursor cleanup before rollback on fetch failures.
 - Reusing a builder after changing the selected result shape now returns Struct rows with the correct members instead of reusing a stale Struct class.
 - Unsupported `stream_each` adapters now raise `SimpleQuery::UnsupportedAdapterError` with the adapter name instead of a generic runtime error.
 
