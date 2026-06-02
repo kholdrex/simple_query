@@ -841,7 +841,7 @@ RSpec.describe SimpleQuery::Builder do
         expect { builder.stream_each }
           .to raise_error(
             SimpleQuery::UnsupportedAdapterError,
-            "stream_each is only implemented for PostgreSQL and MySQL adapters (current adapter: sqlite)"
+            "stream_each is only implemented for PostgreSQL and MySQL adapters (current adapter: SQLite)"
           )
       end
     end
