@@ -206,13 +206,16 @@ module SimpleQuery
     def stream_each(batch_size: 1000, &block)
       validate_stream_batch_size!(batch_size)
 
-      adapter = ActiveRecord::Base.connection.adapter_name.downcase
+      adapter_name = ActiveRecord::Base.connection.adapter_name
+      adapter = adapter_name.downcase
       if adapter.include?("postgres")
         stream_each_postgres(batch_size, &block)
       elsif adapter.include?("mysql")
         stream_each_mysql(&block)
       else
-        raise "stream_each is only implemented for Postgres and MySQL."
+        message = "stream_each is only implemented for PostgreSQL and MySQL adapters " \
+                  "(current adapter: #{adapter_name})"
+        raise UnsupportedAdapterError, message
       end
     end
 

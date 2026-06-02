@@ -351,7 +351,7 @@ Adapter behavior:
 
 - PostgreSQL: uses a server-side cursor with `DECLARE` / `FETCH`; `batch_size` controls the number of rows fetched per cursor read
 - MySQL: uses `mysql2` streaming with `stream: true`, `cache_rows: false`, and `as: :hash`; `batch_size` is accepted by the public API but does not control MySQL batching
-- Other adapters: `stream_each` raises an error
+- Other adapters: `stream_each` raises `SimpleQuery::UnsupportedAdapterError` with the current adapter name
 
 Failure behavior:
 

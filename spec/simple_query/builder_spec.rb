@@ -834,11 +834,15 @@ RSpec.describe SimpleQuery::Builder do
     end
 
     context "when adapter is neither" do
-      it "raises an error" do
+      it "raises a typed unsupported adapter error with the adapter name" do
         builder = described_class.new(User)
-        allow(ActiveRecord::Base.connection).to receive(:adapter_name).and_return("Sqlite")
+        allow(ActiveRecord::Base.connection).to receive(:adapter_name).and_return("SQLite")
 
-        expect { builder.stream_each }.to raise_error("stream_each is only implemented for Postgres and MySQL.")
+        expect { builder.stream_each }
+          .to raise_error(
+            SimpleQuery::UnsupportedAdapterError,
+            "stream_each is only implemented for PostgreSQL and MySQL adapters (current adapter: SQLite)"
+          )
       end
     end
   end
