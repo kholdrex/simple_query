@@ -831,6 +831,24 @@ RSpec.describe SimpleQuery::Builder do
         expect(builder).to receive(:stream_each_mysql).and_return(nil)
         builder.stream_each { |row| }
       end
+
+      it "accepts a positive batch size without passing it to the mysql2 streaming path" do
+        builder = described_class.new(User)
+        allow(ActiveRecord::Base.connection).to receive(:adapter_name).and_return("MySQL")
+
+        expect(builder).to receive(:stream_each_mysql).with(no_args).and_return(nil)
+        builder.stream_each(batch_size: 500) { |_row| }
+      end
+
+      it "rejects invalid batch sizes before starting mysql2 streaming" do
+        builder = described_class.new(User)
+        allow(ActiveRecord::Base.connection).to receive(:adapter_name).and_return("MySQL")
+
+        expect(builder).not_to receive(:stream_each_mysql)
+        expect do
+          builder.stream_each(batch_size: "500") { |_row| }
+        end.to raise_error(ArgumentError, "stream_each batch_size must be a positive Integer")
+      end
     end
 
     context "when adapter is neither" do
