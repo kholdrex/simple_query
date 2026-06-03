@@ -163,7 +163,8 @@ User.simple_query
     .where(["email = :email", { email: email }])
     .execute
 
-# Good: escape wildcard characters before using LIKE, then bind the pattern.
+# Good: bind LIKE values with placeholders. Escape wildcard characters when
+# `%` and `_` should be treated as literal search text instead of wildcards.
 search = params.fetch(:search)
 escaped_search = ActiveRecord::Base.sanitize_sql_like(search)
 User.simple_query
@@ -180,7 +181,7 @@ User.simple_query
     .execute
 ```
 
-Even with quotes around the value, interpolation is unsafe because an apostrophe or SQL fragment in the input can break out of the literal. Keep the SQL string static and pass values through placeholders instead. For `LIKE` queries, `sanitize_sql_like` only escapes wildcard characters; it does not replace placeholder binding.
+Even with quotes around the value, interpolation is unsafe because an apostrophe or SQL fragment in the input can break out of the literal. Keep the SQL string static and pass values through placeholders instead. For `LIKE` queries, `sanitize_sql_like` only changes matching semantics by escaping `%`, `_`, and the escape character itself; it is useful when those characters should be searched literally, but it does not replace placeholder binding.
 
 The same boundary applies outside `where`: keep selected expressions, ordering fragments, and custom aggregation SQL static and application-owned. When a user chooses a column, sort direction, or metric, map that input to a small allowlist before building the query:
 
