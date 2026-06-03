@@ -148,7 +148,57 @@ User.simple_query
     .execute
 ```
 
-Raw SQL strings are an escape hatch for trusted, application-owned SQL only. If any value comes from a user, request, file, or external service, use hash, Arel, or placeholder conditions instead.
+Raw SQL strings are an escape hatch for trusted, application-owned SQL only. If any value comes from a user, request, file, or external service, use hash, Arel, or placeholder conditions instead. The checklist below shows the safer patterns to prefer when query inputs are dynamic.
+
+### SQL fragment safety checklist
+
+SimpleQuery intentionally accepts SQL fragments in places where ActiveRecord also leaves judgment to the application, such as raw `where` strings, string `select` values, and `custom_aggregation` expressions. Treat those fragments as trusted code, not as a templating surface for request data.
+
+Prefer these patterns for dynamic values:
+
+```ruby
+# Good: read dynamic values, then pass them separately so ActiveRecord quotes them.
+email = params.fetch(:email)
+User.simple_query
+    .where(["email = :email", { email: email }])
+    .execute
+
+# Good: escape wildcard characters before using LIKE, then bind the pattern.
+search = params.fetch(:search)
+escaped_search = ActiveRecord::Base.sanitize_sql_like(search)
+User.simple_query
+    .where(["name LIKE ?", "%#{escaped_search}%"])
+    .execute
+```
+
+Avoid interpolating untrusted values into SQL fragments:
+
+```ruby
+# Unsafe: request data is interpolated into a raw SQL string.
+User.simple_query
+    .where("email = '#{params[:email]}'")
+    .execute
+```
+
+Even with quotes around the value, interpolation is unsafe because an apostrophe or SQL fragment in the input can break out of the literal. Keep the SQL string static and pass values through placeholders instead. For `LIKE` queries, `sanitize_sql_like` only escapes wildcard characters; it does not replace placeholder binding.
+
+The same boundary applies outside `where`: keep selected expressions, ordering fragments, and custom aggregation SQL static and application-owned. When a user chooses a column, sort direction, or metric, map that input to a small allowlist before building the query:
+
+```ruby
+sort_columns = {
+  "name" => :name,
+  "created_at" => :created_at
+}
+sort_directions = {
+  "asc" => :asc,
+  "desc" => :desc
+}
+
+User.simple_query
+    .select(:id, :name, :email)
+    .order(sort_columns.fetch(params[:sort], :name) => sort_directions.fetch(params[:direction], :asc))
+    .execute
+```
 
 ## Joins
 
