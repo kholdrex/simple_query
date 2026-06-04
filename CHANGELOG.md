@@ -12,6 +12,7 @@ All notable changes to this project are documented in this file.
 - ActiveRecord dependency bounds now allow the full 8.0 patch line while excluding 8.1 until it is tested.
 - `simple_scope` now rejects invalid scope bodies at definition time.
 - README safety guidance now gives explicit allowlist and placeholder examples for trusted SQL fragment escape hatches.
+- README safety guidance now clarifies `LIKE` placeholder quoting, with specs documenting trusted raw `where` strings as escape hatches.
 
 ### Fixed
 - PostgreSQL `stream_each` now closes a declared cursor before rollback when row processing fails and attempts cursor cleanup before rollback on fetch failures.
