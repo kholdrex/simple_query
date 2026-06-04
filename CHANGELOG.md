@@ -11,6 +11,7 @@ All notable changes to this project are documented in this file.
 - ActiveRecord 8.0 is now included in the PostgreSQL/MySQL CI matrix on Ruby 3.2.
 - ActiveRecord dependency bounds now allow the full 8.0 patch line while excluding 8.1 until it is tested.
 - `simple_scope` now rejects invalid scope bodies at definition time.
+- README safety guidance now gives explicit allowlist and placeholder examples for trusted SQL fragment escape hatches.
 
 ### Fixed
 - PostgreSQL `stream_each` now closes a declared cursor before rollback when row processing fails and attempts cursor cleanup before rollback on fetch failures.
