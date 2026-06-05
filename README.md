@@ -136,7 +136,7 @@ User.simple_query
     .execute
 ```
 
-Keep the SQL fragment itself static and pass dynamic values as positional or named placeholders. Do not interpolate request parameters, form values, or other untrusted input into the SQL string.
+Keep the SQL fragment itself static and pass dynamic values as positional or named placeholders so ActiveRecord quotes them as SQL data literals. Do not interpolate request parameters, form values, or other untrusted input into the SQL string.
 
 ### Raw SQL conditions
 
@@ -163,7 +163,7 @@ User.simple_query
     .where(["email = :email", { email: email }])
     .execute
 
-# Good: bind LIKE values with placeholders. Escape wildcard characters when
+# Good: quote LIKE values with placeholders. Escape wildcard characters when
 # `%` and `_` should be treated as literal search text instead of wildcards.
 search = params.fetch(:search)
 escaped_search = ActiveRecord::Base.sanitize_sql_like(search)
@@ -181,7 +181,7 @@ User.simple_query
     .execute
 ```
 
-Even with quotes around the value, interpolation is unsafe because an apostrophe or SQL fragment in the input can break out of the literal. Keep the SQL string static and pass values through placeholders instead. For `LIKE` queries, `sanitize_sql_like` only changes matching semantics by escaping `%`, `_`, and the escape character itself; it is useful when those characters should be searched literally, but it does not replace placeholder binding.
+Even with quotes around the value, interpolation is unsafe because an apostrophe or SQL fragment in the input can break out of the literal. Keep the SQL string static and pass values through placeholders so ActiveRecord quotes them as SQL data literals instead. For `LIKE` queries, `sanitize_sql_like` only changes matching semantics by escaping `%`, `_`, and the escape character itself; it is useful when those characters should be searched literally, but it does not replace placeholder quoting.
 
 The same boundary applies outside `where`: keep selected expressions, ordering fragments, and custom aggregation SQL static and application-owned. When a user chooses a column, sort direction, or metric, map that input to a small allowlist before building the query:
 
@@ -488,14 +488,19 @@ Use hash conditions for simple equality predicates and array placeholder conditi
 User.simple_query.where(email: params[:email]).execute
 
 # SQL fragments with external values should use ActiveRecord-style placeholders.
+query = params[:query].to_s
+escaped_query = ActiveRecord::Base.sanitize_sql_like(query)
+
 User.simple_query
-    .where(["name ILIKE ?", "%#{params[:query]}%"])
+    .where(["name ILIKE ?", "%#{escaped_query}%"])
     .execute
 
 User.simple_query
     .where(["email = :email", { email: params[:email] }])
     .execute
 ```
+
+Placeholders quote values as SQL data literals, while `sanitize_sql_like` makes `%` and `_` match literally in `LIKE` patterns; escaping the pattern does not replace placeholder quoting.
 
 Do not interpolate external values into raw strings:
 
@@ -517,7 +522,7 @@ Company.simple_query
        .execute
 ```
 
-Keep aliases, custom aggregation expressions, raw `select` strings, raw `where` strings, `having` expressions, and `group_concat` separators static or otherwise trusted. If a fragment must include external values, bind them before passing the query to SimpleQuery or express the condition with hash, Arel, or placeholder `where` syntax.
+Keep aliases, custom aggregation expressions, raw `select` strings, raw `where` strings, `having` expressions, and `group_concat` separators static or otherwise trusted. If a condition must include external values, express those values with hash, Arel, or placeholder `where` syntax instead of interpolating them into raw SQL fragments.
 
 ### Direct updates
 

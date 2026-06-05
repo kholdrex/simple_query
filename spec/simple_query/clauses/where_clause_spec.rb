@@ -30,6 +30,16 @@ RSpec.describe SimpleQuery::WhereClause do
       expect(where_clause.conditions.first.to_s).to include("users.deleted_at IS NULL")
     end
 
+    it "preserves string conditions as trusted raw SQL" do
+      condition = "users.deleted_at IS NULL OR users.admin = 1"
+
+      where_clause.add(condition)
+
+      expect(where_clause.conditions.size).to eq(1)
+      expect(where_clause.conditions.first).to be_a(Arel::Nodes::SqlLiteral)
+      expect(where_clause.conditions.first.to_s).to eq(condition)
+    end
+
     context "with placeholder arrays" do
       it "handles positional placeholders" do
         where_clause.add(["name LIKE ?", "%John%"])
@@ -38,6 +48,17 @@ RSpec.describe SimpleQuery::WhereClause do
         sql_node = where_clause.conditions.first
         expect(sql_node).to be_a(Arel::Nodes::SqlLiteral)
         expect(sql_node.to_s).to match(/name LIKE '%John%'/)
+      end
+
+      it "quotes SQL-like placeholder values as data" do
+        unsafe_value = "x' OR '1'='1"
+
+        where_clause.add(["name = ?", unsafe_value])
+        expect(where_clause.conditions.size).to eq(1)
+
+        sql_node = where_clause.conditions.first
+        expect(sql_node).to be_a(Arel::Nodes::SqlLiteral)
+        expect(sql_node.to_s).to eq("name = #{ActiveRecord::Base.connection.quote(unsafe_value)}")
       end
 
       it "handles named placeholders" do
