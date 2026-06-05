@@ -492,7 +492,7 @@ mkdir -p tmp/benchmarks
   echo "bundler_version=$(bundle --version)"
   echo "ruby_platform=$(ruby -e 'puts RUBY_PLATFORM')"
   echo "benchmark_environment_start"
-  env | grep '^BENCHMARK_' | sort
+  env | grep '^BENCHMARK_' | sort || true
   echo "benchmark_environment_end"
 } > tmp/benchmarks/simple_query-reproducible.metadata
 ```
