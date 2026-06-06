@@ -14,6 +14,7 @@ All notable changes to this project are documented in this file.
 - README safety guidance now gives explicit allowlist and placeholder examples for trusted SQL fragment escape hatches.
 - README safety guidance now clarifies `LIKE` placeholder quoting, with specs documenting trusted raw `where` strings as escape hatches.
 - README benchmark guidance now shows how to capture reproducible benchmark JSON and environment metadata artifacts.
+- Benchmark harness regression specs now guard JSON artifact shape and environment config parsing.
 
 ### Fixed
 - PostgreSQL `stream_each` now closes a declared cursor before rollback when row processing fails and attempts cursor cleanup before rollback on fetch failures.
