@@ -6,39 +6,20 @@ require "open3"
 require "stringio"
 
 RSpec.describe "benchmark/simple_query_benchmark" do
-  def benchmark_env_keys
-    [
-      "BENCHMARK_ROWS",
-      "BENCHMARK_RUNS",
-      "BENCHMARK_WARMUP",
-      "BENCHMARK_DATABASE"
-    ]
-  end
-
   def benchmark_path
     File.expand_path("../../benchmark/simple_query_benchmark.rb", __dir__)
   end
 
   def with_benchmark_env(values)
-    previous = benchmark_env_keys.to_h { |key| [key, ENV.fetch(key, nil)] }
+    previous = ENV.select { |key, _value| key.start_with?("BENCHMARK_") }
 
-    benchmark_env_keys.each do |key|
-      if values.key?(key)
-        ENV[key] = values[key]
-      else
-        ENV.delete(key)
-      end
-    end
+    ENV.delete_if { |key, _value| key.start_with?("BENCHMARK_") }
+    values.each { |key, value| ENV[key] = value }
 
     yield
   ensure
-    previous.each do |key, value|
-      if value.nil?
-        ENV.delete(key)
-      else
-        ENV[key] = value
-      end
-    end
+    ENV.delete_if { |key, _value| key.start_with?("BENCHMARK_") }
+    previous.each { |key, value| ENV[key] = value }
   end
 
   def valid_integer_env
@@ -152,6 +133,65 @@ RSpec.describe "benchmark/simple_query_benchmark" do
           end
         end
       end
+    end
+  end
+
+  describe ".metadata" do
+    before do
+      require benchmark_path
+    end
+
+    it "includes repository, runtime, and benchmark environment details" do
+      allow(SimpleQueryBenchmark).to receive(:git_revision).and_return("abc123")
+      allow(SimpleQueryBenchmark).to receive(:git_dirty).and_return(false)
+
+      with_benchmark_env(
+        "BENCHMARK_ROWS" => "12",
+        "BENCHMARK_RUNS" => "3",
+        "BENCHMARK_WARMUP" => "2",
+        "BENCHMARK_DATABASE" => "tmp/benchmark.sqlite3"
+      ) do
+        metadata = SimpleQueryBenchmark.metadata(
+          rows: 12,
+          runs: 3,
+          warmup: 2,
+          database: "tmp/benchmark.sqlite3"
+        )
+
+        expect(metadata).to include(
+          ruby: RUBY_DESCRIPTION,
+          ruby_platform: RUBY_PLATFORM,
+          bundler: Bundler::VERSION,
+          active_record: ActiveRecord::VERSION::STRING,
+          simple_query: SimpleQuery::VERSION,
+          adapter: ActiveRecord::Base.connection.adapter_name,
+          git_revision: "abc123",
+          git_dirty: false,
+          rows: 12,
+          runs: 3,
+          warmup: 2,
+          database: "tmp/benchmark.sqlite3"
+        )
+        expect(metadata.fetch(:benchmark_environment)).to eq(
+          "BENCHMARK_DATABASE" => "tmp/benchmark.sqlite3",
+          "BENCHMARK_ROWS" => "12",
+          "BENCHMARK_RUNS" => "3",
+          "BENCHMARK_WARMUP" => "2"
+        )
+      end
+    end
+
+    it "returns nil git values when repository metadata is unavailable" do
+      allow(SimpleQueryBenchmark).to receive(:git_output).and_return(nil)
+
+      expect(SimpleQueryBenchmark.git_revision).to be_nil
+      expect(SimpleQueryBenchmark.git_dirty).to be_nil
+    end
+
+    it "returns nil when the git executable is unavailable" do
+      allow(Open3).to receive(:capture3).and_raise(Errno::ENOENT)
+
+      expect(SimpleQueryBenchmark.git_output("rev-parse", "HEAD")).to be_nil
     end
   end
 

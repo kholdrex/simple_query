@@ -2,7 +2,9 @@
 
 require "active_record"
 require "benchmark"
+require "bundler"
 require "json"
+require "open3"
 require "simple_query"
 require "simple_query/version"
 
@@ -114,14 +116,49 @@ module SimpleQueryBenchmark # rubocop:disable Metrics/ModuleLength
   def metadata(config)
     {
       ruby: RUBY_DESCRIPTION,
+      ruby_platform: RUBY_PLATFORM,
+      bundler: Bundler::VERSION,
       active_record: ActiveRecord::VERSION::STRING,
       simple_query: SimpleQuery::VERSION,
       adapter: ActiveRecord::Base.connection.adapter_name,
+      git_revision: git_revision,
+      git_dirty: git_dirty,
+      benchmark_environment: benchmark_environment,
       rows: config.fetch(:rows),
       runs: config.fetch(:runs),
       warmup: config.fetch(:warmup),
       database: config.fetch(:database)
     }
+  end
+
+  def git_revision
+    git_output("rev-parse", "HEAD")
+  end
+
+  def git_dirty
+    status = git_output("status", "--porcelain")
+    return nil if status.nil?
+
+    !status.empty?
+  end
+
+  def git_output(*arguments)
+    stdout, _stderr, status = Open3.capture3("git", *arguments, chdir: project_root)
+    return nil unless status.success?
+
+    stdout.strip
+  rescue Errno::ENOENT
+    nil
+  end
+
+  def project_root
+    File.expand_path("..", __dir__)
+  end
+
+  def benchmark_environment
+    ENV.select { |key, _value| key.start_with?("BENCHMARK_") }
+       .sort_by { |key, _value| key }
+       .to_h
   end
 
   def timing_results(config)
