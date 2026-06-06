@@ -193,6 +193,12 @@ RSpec.describe "benchmark/simple_query_benchmark" do
 
       expect(SimpleQueryBenchmark.git_output("rev-parse", "HEAD")).to be_nil
     end
+
+    it "returns nil when git cannot be executed" do
+      allow(Open3).to receive(:capture3).and_raise(Errno::EACCES)
+
+      expect(SimpleQueryBenchmark.git_output("rev-parse", "HEAD")).to be_nil
+    end
   end
 
   describe "running the harness" do

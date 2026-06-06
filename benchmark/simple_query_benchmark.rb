@@ -147,7 +147,7 @@ module SimpleQueryBenchmark # rubocop:disable Metrics/ModuleLength
     return nil unless status.success?
 
     stdout.strip
-  rescue Errno::ENOENT
+  rescue SystemCallError
     nil
   end
 
