@@ -13,6 +13,7 @@ All notable changes to this project are documented in this file.
 - `simple_scope` now rejects invalid scope bodies at definition time.
 - README safety guidance now gives explicit allowlist and placeholder examples for trusted SQL fragment escape hatches.
 - README safety guidance now clarifies `LIKE` placeholder quoting, with specs documenting trusted raw `where` strings as escape hatches.
+- README benchmark guidance now shows how to capture reproducible benchmark JSON and environment metadata artifacts.
 
 ### Fixed
 - PostgreSQL `stream_each` now closes a declared cursor before rollback when row processing fails and attempts cursor cleanup before rollback on fetch failures.

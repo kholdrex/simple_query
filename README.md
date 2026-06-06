@@ -464,7 +464,40 @@ Available variables:
 - `BENCHMARK_RUNS` (default: `5`) controls the number of timed samples per scenario.
 - `BENCHMARK_DATABASE` (default: `:memory:`) can point at a SQLite database file if you want to inspect the generated benchmark-specific tables. The harness drops and recreates `simple_query_benchmark_users` and `simple_query_benchmark_companies` in that database on every run.
 
-Use captured benchmark output only as a reproducibility artifact. Do not compare runs from different hardware, databases, Ruby versions, or dependency sets as if they were equivalent.
+The benchmark task writes JSON to standard output so it can be redirected into an artifact file. Keep progress messages or diagnostics on standard error if you extend the harness later.
+
+To preserve a run as a reviewable artifact, capture the JSON output to a file, validate that the artifact is parseable JSON, and keep the workload settings alongside it:
+
+```sh
+set -e
+mkdir -p tmp/benchmarks
+export BENCHMARK_ROWS=50000
+export BENCHMARK_WARMUP=3
+export BENCHMARK_RUNS=10
+bundle exec rake benchmark:reproducible > tmp/benchmarks/simple_query-reproducible.json
+ruby -rjson -e 'JSON.parse(File.read(ARGV.fetch(0)))' tmp/benchmarks/simple_query-reproducible.json
+```
+
+Before sharing or comparing a result, record enough environment metadata to recreate the run. The benchmark JSON includes runtime and key dependency information, but it is also useful to save the exact repository revision, dirty-checkout status, Ruby version, Bundler version, platform, hardware notes, and any non-default exported `BENCHMARK_*` values used from the same shell session:
+
+```sh
+set -e
+mkdir -p tmp/benchmarks
+{
+  echo "git_revision=$(git describe --always --dirty)"
+  echo "git_status_short_start"
+  git status --short
+  echo "git_status_short_end"
+  echo "ruby_version=$(ruby --version)"
+  echo "bundler_version=$(bundle --version)"
+  echo "ruby_platform=$(ruby -e 'puts RUBY_PLATFORM')"
+  echo "benchmark_environment_start"
+  env | grep '^BENCHMARK_' | sort || true
+  echo "benchmark_environment_end"
+} > tmp/benchmarks/simple_query-reproducible.metadata
+```
+
+Use captured benchmark output only as a reproducibility artifact. Do not compare runs from different hardware, databases, Ruby versions, dependency sets, dataset sizes, warmup counts, run counts, or benchmark databases as if they were equivalent. Prefer comparing changes by rerunning the same command on the same machine from a clean checkout of each revision, and treat non-empty `git status --short` metadata as a signal that the run may not be reproducible from the recorded revision alone.
 
 ## Safety notes
 
