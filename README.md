@@ -478,7 +478,7 @@ bundle exec rake benchmark:reproducible > tmp/benchmarks/simple_query-reproducib
 ruby -rjson -e 'JSON.parse(File.read(ARGV.fetch(0)))' tmp/benchmarks/simple_query-reproducible.json
 ```
 
-Before sharing or comparing a result, record enough environment metadata to recreate the run. The benchmark JSON includes runtime and key dependency information, but it is also useful to save the exact repository revision, dirty-checkout status, Ruby version, Bundler version, platform, hardware notes, and any non-default exported `BENCHMARK_*` values used from the same shell session:
+Before sharing or comparing a result, record enough environment metadata to recreate the run. The benchmark JSON includes runtime details, key dependency versions, and exported `BENCHMARK_*` values. When the task runs from a Git checkout, it also includes the current Git revision and dirty-checkout status; otherwise those Git fields are `null`. It is still useful to save companion hardware notes and the short Git status from the same shell session:
 
 ```sh
 set -e
@@ -488,16 +488,11 @@ mkdir -p tmp/benchmarks
   echo "git_status_short_start"
   git status --short
   echo "git_status_short_end"
-  echo "ruby_version=$(ruby --version)"
-  echo "bundler_version=$(bundle --version)"
-  echo "ruby_platform=$(ruby -e 'puts RUBY_PLATFORM')"
-  echo "benchmark_environment_start"
-  env | grep '^BENCHMARK_' | sort || true
-  echo "benchmark_environment_end"
+  echo "hardware=$(uname -a)"
 } > tmp/benchmarks/simple_query-reproducible.metadata
 ```
 
-Use captured benchmark output only as a reproducibility artifact. Do not compare runs from different hardware, databases, Ruby versions, dependency sets, dataset sizes, warmup counts, run counts, or benchmark databases as if they were equivalent. Prefer comparing changes by rerunning the same command on the same machine from a clean checkout of each revision, and treat non-empty `git status --short` metadata as a signal that the run may not be reproducible from the recorded revision alone.
+Use captured benchmark output only as a reproducibility artifact. Do not compare runs from different hardware, databases, Ruby versions, dependency sets, dataset sizes, warmup counts, run counts, or benchmark databases as if they were equivalent. Prefer comparing changes by rerunning the same command on the same machine from a clean checkout of each revision, and treat non-empty `git status --short` metadata as a signal that the run may not be reproducible from the recorded revision alone. Scrub sensitive environment values before sharing artifacts if any `BENCHMARK_*` setting contains credentials, private paths, or hostnames.
 
 ## Safety notes
 
