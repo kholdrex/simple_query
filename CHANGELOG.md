@@ -2,7 +2,7 @@
 
 All notable changes to this project are documented in this file.
 
-## Unreleased
+## [0.6.0] - 2026-09-29
 
 ### Breaking
 - `simple_scope` now validates positional argument counts before invoking scope bodies. Calls that previously relied on Ruby's lenient `Proc` argument handling now raise a named `ArgumentError` when too few or too many positional arguments are provided.
