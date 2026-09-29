@@ -200,6 +200,41 @@ RSpec.describe SimpleQuery::Builder do
       expect(result.first.name).to eq("Jane Doe")
     end
 
+    it "turns array hash values into IN conditions" do
+      result = User.simple_query.select(:name).where(name: ["Jane Doe", "John Smith"]).execute
+      expect(result.map(&:name)).to contain_exactly("Jane Doe", "John Smith")
+
+      expect(User.simple_query.where(name: []).execute).to be_empty
+    end
+
+    it "matches NULL when an array hash value contains nil" do
+      User.create!(name: "No First Name", email: "no-first-name@example.com", first_name: nil)
+
+      result = User.simple_query.select(:name).where(first_name: [nil, "Jane"]).where(active: nil).execute
+      expect(result.map(&:name)).to contain_exactly("No First Name")
+
+      result = User.simple_query.select(:name).where(first_name: [nil, "Jane"]).execute
+      expect(result.map(&:name)).to contain_exactly("Jane Doe", "No First Name")
+
+      result = User.simple_query.select(:name).where(first_name: [nil]).execute
+      expect(result.map(&:name)).to contain_exactly("No First Name")
+    end
+
+    it "turns range hash values into BETWEEN conditions" do
+      result = Company.simple_query.select(:name).where(founded_year: 2009..2011).execute
+      expect(result.map(&:name)).to contain_exactly("TechCorp")
+    end
+
+    it "combines multiple raw SQL conditions and keeps their precedence" do
+      result = User.simple_query
+                   .select(:name)
+                   .where("users.name = 'Jane Doe' OR users.name = 'John Smith'")
+                   .where(["users.email = ?", "jane@example.com"])
+                   .execute
+
+      expect(result.map(&:name)).to contain_exactly("Jane Doe")
+    end
+
     it "supports basic aggregations" do
       result = Company.simple_query
                       .select(Arel.sql("SUM(annual_revenue) as total_revenue"))
@@ -395,6 +430,16 @@ RSpec.describe SimpleQuery::Builder do
 
       expect(tech_row.total_revenue.to_i).to eq(1_000_000)
       expect(soft_row.total_revenue.to_i).to eq(500_000)
+    end
+
+    it "supports hash HAVING conditions" do
+      result = Company.simple_query.select(:industry).group(:industry).having(industry: "Software").execute
+      expect(result.map(&:industry)).to eq(["Software"])
+    end
+
+    it "supports Arel attributes as HAVING conditions" do
+      result = User.simple_query.select(:active).group(:active).having(User.arel_table[:active]).execute
+      expect(result.size).to eq(1)
     end
 
     it "supports LIMIT and OFFSET" do
@@ -772,6 +817,21 @@ RSpec.describe SimpleQuery::Builder do
     end
   end
 
+  describe "hash conditions on PostgreSQL array columns",
+           if: ActiveRecord::Base.connection.adapter_name.match?(/postg/i) do
+    before do
+      ActiveRecord::Base.connection.create_table(:tagged_items, temporary: true) { |t| t.text :tags, array: true }
+      stub_const("TaggedItem", Class.new(ActiveRecord::Base) { include SimpleQuery })
+      TaggedItem.create!(tags: ["ruby", "rails"])
+      TaggedItem.create!(tags: [])
+    end
+
+    it "compares array values by equality instead of expanding them to IN" do
+      expect(TaggedItem.simple_query.where(tags: ["ruby", "rails"]).execute.size).to eq(1)
+      expect(TaggedItem.simple_query.where(tags: []).execute.size).to eq(1)
+    end
+  end
+
   describe "#bulk_update" do
     it "updates matching rows with the given columns" do
       query_object.where(active: true)
@@ -785,6 +845,19 @@ RSpec.describe SimpleQuery::Builder do
       expect do
         query_object.bulk_update(set: { random_column: 9 })
       end.to raise_error(ActiveRecord::StatementInvalid, /random_column/)
+    end
+
+    it "refuses to ignore limit, joins, or grouping" do
+      expect { query_object.where(active: true).limit(1).bulk_update(set: { status: 9 }) }
+        .to raise_error(ArgumentError, %r{limit/offset})
+      expect do
+        described_class.new(User)
+                       .join(:users, :companies, foreign_key: :user_id, primary_key: :id)
+                       .bulk_update(set: { status: 9 })
+      end.to raise_error(ArgumentError, /joins/)
+      expect { described_class.new(User).group(:status).bulk_update(set: { status: 9 }) }
+        .to raise_error(ArgumentError, %r{group/having})
+      expect(User.where(status: 9)).not_to exist
     end
 
     it "raises an error if the set hash is empty" do
@@ -820,6 +893,25 @@ RSpec.describe SimpleQuery::Builder do
         expect do
           builder.stream_each(batch_size: 0) { |_row| }
         end.to raise_error(ArgumentError, "stream_each batch_size must be a positive Integer")
+      end
+    end
+
+    context "with a real PostgreSQL connection", if: ActiveRecord::Base.connection.adapter_name.match?(/postg/i) do
+      it "leaves the caller's transaction open so it can still roll back" do
+        ActiveRecord::Base.transaction(requires_new: true) do
+          User.create!(name: "Rolled Back", email: "rolled-back@example.com")
+          User.simple_query.select(:name).stream_each { |_row| }
+          raise ActiveRecord::Rollback
+        end
+
+        expect(User.where(email: "rolled-back@example.com")).not_to exist
+      end
+
+      it "closes the cursor when the caller breaks out early" do
+        builder = User.simple_query.select(:name)
+        2.times { builder.stream_each(batch_size: 1) { |_row| break } }
+
+        expect(User.simple_query.select(:name).execute.size).to eq(2)
       end
     end
 

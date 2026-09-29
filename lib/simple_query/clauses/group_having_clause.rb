@@ -15,15 +15,14 @@ module SimpleQuery
     end
 
     def add_having(condition)
-      @having_conditions << condition
+      clause = WhereClause.new(@table)
+      clause.add(condition)
+      @having_conditions.concat(clause.conditions)
     end
 
     def apply_to(query)
       @group_fields.each { |g| query.group(g) }
-      if @having_conditions.any?
-        combined = @having_conditions.inject { |c, a| c.and(a) }
-        query.having(combined)
-      end
+      query.having(WhereClause.combine(@having_conditions)) if @having_conditions.any?
       query
     end
   end

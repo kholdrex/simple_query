@@ -4,6 +4,13 @@ module SimpleQuery
   class WhereClause
     attr_reader :conditions
 
+    def self.combine(conditions)
+      return nil if conditions.empty?
+      return conditions.first if conditions.one?
+
+      Arel::Nodes::And.new(conditions.map { |c| c.is_a?(Arel::Nodes::Grouping) ? c : Arel::Nodes::Grouping.new(c) })
+    end
+
     def initialize(table)
       @table = table
       @conditions = []
@@ -15,11 +22,7 @@ module SimpleQuery
     end
 
     def to_arel
-      return nil if @conditions.empty?
-
-      @conditions.inject do |combined, current|
-        combined.and(current)
-      end
+      self.class.combine(@conditions)
     end
 
     private
@@ -27,8 +30,8 @@ module SimpleQuery
     def parse_condition(condition)
       case condition
       when Hash
-        condition.map { |field, value| @table[field].eq(value) }
-      when Arel::Nodes::Node
+        condition.map { |field, value| hash_predicate(field, value) }
+      when Arel::Nodes::Node, Arel::Attributes::Attribute
         [condition]
       when Array
         sanitized_sql = ActiveRecord::Base.send(:sanitize_sql_array, condition)
@@ -36,6 +39,27 @@ module SimpleQuery
       else
         [Arel.sql(condition.to_s)]
       end
+    end
+
+    def hash_predicate(field, value)
+      attribute = @table[field]
+      return attribute.eq(value) if force_equality?(field, value)
+
+      case value
+      when Array
+        values = value.compact
+        predicate = attribute.in(values)
+        values.size == value.size ? predicate : predicate.or(attribute.eq(nil))
+      when Range
+        attribute.between(value)
+      else
+        attribute.eq(value)
+      end
+    end
+
+    # PostgreSQL array/range columns compare arrays and ranges by equality, like ActiveRecord does.
+    def force_equality?(field, value)
+      @table.able_to_type_cast? && @table.type_for_attribute(field.to_s).force_equality?(value)
     end
   end
 end

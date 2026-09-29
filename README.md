@@ -106,7 +106,7 @@ User.simple_query
     .execute
 ```
 
-Hash conditions are simple equality predicates against the query's base table.
+Hash conditions are predicates against the query's base table. Arrays become `IN (...)` (a `nil` element adds `OR ... IS NULL`), ranges become `BETWEEN`, and other values become equality checks. PostgreSQL array and range columns compare by equality, as in ActiveRecord.
 
 ### Arel conditions
 
@@ -420,7 +420,7 @@ User.simple_query
     .bulk_update(set: { status: 0 })
 ```
 
-`bulk_update` sends SQL directly through the ActiveRecord connection and does not instantiate models or run ActiveRecord callbacks. If no `where` conditions are present, it updates the entire table.
+`bulk_update` sends SQL directly through the ActiveRecord connection and does not instantiate models or run ActiveRecord callbacks. If no `where` conditions are present, it updates the entire table. Joins, `limit`/`offset`, and `group`/`having` are not applied to the `UPDATE`, so `bulk_update` raises `ArgumentError` when any of them are present.
 
 ## Subqueries
 
@@ -503,7 +503,7 @@ Recommended usage:
 - Prefer hash, Arel, or placeholder conditions for values derived from users or external systems.
 - Treat raw SQL strings in `select`, `where`, and `custom_aggregation` as trusted-only escape hatches.
 - Keep `group_concat` separators static and trusted; they are interpolated into database-specific SQL.
-- Use Arel nodes or `Arel.sql(...)` for `having` clauses; it does not share the same condition parser as `where`.
+- `having` accepts the same condition styles as `where`; raw strings are trusted-only there too.
 - Keep tenant, authorization, and visibility constraints explicit in your query code.
 - Remember that `bulk_update` bypasses model callbacks and validations, like any direct SQL update.
 
