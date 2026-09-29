@@ -4,8 +4,9 @@ module SimpleQuery
   class GroupHavingClause
     attr_reader :group_fields, :having_conditions
 
-    def initialize(table)
+    def initialize(table, model = ActiveRecord::Base)
       @table = table
+      @model = model
       @group_fields = []
       @having_conditions = []
     end
@@ -15,7 +16,7 @@ module SimpleQuery
     end
 
     def add_having(condition)
-      clause = WhereClause.new(@table)
+      clause = WhereClause.new(@table, @model)
       clause.add(condition)
       @having_conditions.concat(clause.conditions)
     end

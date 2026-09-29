@@ -27,6 +27,10 @@ All notable changes to this project are documented in this file.
 - `having` now accepts hash, placeholder, and raw string conditions like `where`.
 - PostgreSQL `stream_each` no longer commits the caller's open transaction. It only opens its own transaction when none is active.
 - PostgreSQL `stream_each` now closes its cursor and ends its own transaction when the caller leaves the block early with `break` or `return`.
+- Queries now run on the model's own connection instead of `ActiveRecord::Base.connection`. Models on another database (`connects_to` or `establish_connection`) previously had `execute`, `bulk_update`, and `stream_each` sent to the primary database, with quoting and SQL dialect taken from it.
+- `Arel.sql` conditions with bind values (ActiveRecord 7.1+) now have their values inlined instead of sending unbound placeholders.
+- MySQL `stream_each` now frees the streaming result when the block raises or the caller breaks out early, so the connection can run the next query.
+- `bulk_update` now quotes the table name.
 
 ## [0.5.0] - 2025-08-29
 

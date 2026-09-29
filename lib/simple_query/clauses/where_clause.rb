@@ -11,8 +11,9 @@ module SimpleQuery
       Arel::Nodes::And.new(conditions.map { |c| c.is_a?(Arel::Nodes::Grouping) ? c : Arel::Nodes::Grouping.new(c) })
     end
 
-    def initialize(table)
+    def initialize(table, model = ActiveRecord::Base)
       @table = table
+      @model = model
       @conditions = []
     end
 
@@ -34,7 +35,7 @@ module SimpleQuery
       when Arel::Nodes::Node, Arel::Attributes::Attribute
         [condition]
       when Array
-        sanitized_sql = ActiveRecord::Base.send(:sanitize_sql_array, condition)
+        sanitized_sql = @model.send(:sanitize_sql_array, condition)
         [Arel.sql(sanitized_sql)]
       else
         [Arel.sql(condition.to_s)]

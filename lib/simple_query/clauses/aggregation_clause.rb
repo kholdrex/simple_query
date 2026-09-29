@@ -4,8 +4,9 @@ module SimpleQuery
   class AggregationClause
     attr_reader :aggregations
 
-    def initialize(table)
+    def initialize(table, model = ActiveRecord::Base)
       @table = table
+      @model = model
       @aggregations = []
     end
 
@@ -91,7 +92,7 @@ module SimpleQuery
       alias_name ||= "group_concat_#{sanitize_alias(column)}"
 
       # Use database-specific group concatenation
-      adapter = ActiveRecord::Base.connection.adapter_name.downcase
+      adapter = @model.connection.adapter_name.downcase
 
       expression = case adapter
                    when /mysql/

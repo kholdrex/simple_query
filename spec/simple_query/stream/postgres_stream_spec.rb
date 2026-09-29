@@ -17,6 +17,10 @@ RSpec.describe SimpleQuery::Stream::PostgresStream do
 
     attr_accessor :read_model_class
 
+    def connection
+      ActiveRecord::Base.connection
+    end
+
     def build_row_object(row)
       { "mocked" => row }
     end

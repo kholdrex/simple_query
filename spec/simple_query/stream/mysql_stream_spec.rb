@@ -17,6 +17,10 @@ RSpec.describe SimpleQuery::Stream::MysqlStream do
 
     attr_accessor :read_model_class
 
+    def connection
+      ActiveRecord::Base.connection
+    end
+
     def build_row_object_mysql(row)
       { "mocked_mysql" => row }
     end
@@ -34,6 +38,7 @@ RSpec.describe SimpleQuery::Stream::MysqlStream do
                                      .and_return(mysql_result)
 
       allow(mysql_result).to receive(:each).and_yield({ "id" => 1 }).and_yield({ "id" => 2 })
+      allow(mysql_result).to receive(:free)
 
       rows = []
       builder.stream_each_mysql do |r|
@@ -49,10 +54,20 @@ RSpec.describe SimpleQuery::Stream::MysqlStream do
                                      .and_return(mysql_result)
 
       allow(mysql_result).to receive(:each).and_yield({ "id" => 1 })
+      expect(mysql_result).to receive(:free)
 
       expect do
         builder.stream_each_mysql { |_record| raise "consumer failed" }
       end.to raise_error("consumer failed")
+    end
+
+    it "frees the result when the caller breaks out early" do
+      allow(ActiveRecord::Base).to receive_message_chain(:connection, :raw_connection).and_return(conn)
+      allow(conn).to receive(:query).and_return(mysql_result)
+      allow(mysql_result).to receive(:each).and_yield({ "id" => 1 }).and_yield({ "id" => 2 })
+      expect(mysql_result).to receive(:free)
+
+      builder.stream_each_mysql { |_record| break }
     end
   end
 end

@@ -12,13 +12,13 @@ module SimpleQuery
       @arel_table = @model.arel_table
 
       @selects = []
-      @wheres = WhereClause.new(@arel_table)
+      @wheres = WhereClause.new(@arel_table, @model)
       @joins = JoinClause.new
-      @group_having = GroupHavingClause.new(@arel_table)
+      @group_having = GroupHavingClause.new(@arel_table, @model)
       @orders = OrderClause.new(@arel_table)
       @limits = LimitOffsetClause.new
       @distinct_flag = DistinctClause.new
-      @aggregations = AggregationClause.new(@arel_table)
+      @aggregations = AggregationClause.new(@arel_table, @model)
 
       @query_cache = {}
       @query_built = false
@@ -193,22 +193,22 @@ module SimpleQuery
     def bulk_update(set:)
       validate_bulk_update_scope!
 
-      table_name = @arel_table.name
-      set_sql = SetClause.new(set).to_sql
-
+      set_sql = SetClause.new(set, @model).to_sql
       raise ArgumentError, "No columns to update" if set_sql.empty?
 
-      where_sql = build_where_sql
-      sql = "UPDATE #{table_name} SET #{set_sql}"
-      sql += " WHERE #{where_sql}" unless where_sql.nil? || where_sql.empty?
+      update = Arel::UpdateManager.new
+      update.table(@arel_table)
+      update.set(Arel.sql(set_sql))
+      condition = @wheres.to_arel
+      update.where(condition) if condition
 
-      ActiveRecord::Base.connection.execute(sql)
+      connection.execute(compile_sql(update))
     end
 
     def stream_each(batch_size: 1000, &block)
       validate_stream_batch_size!(batch_size)
 
-      adapter_name = ActiveRecord::Base.connection.adapter_name
+      adapter_name = connection.adapter_name
       adapter = adapter_name.downcase
       if adapter.include?("postgres")
         stream_each_postgres(batch_size, &block)
@@ -222,13 +222,13 @@ module SimpleQuery
     end
 
     def execute
-      records = ActiveRecord::Base.connection.select_all(cached_sql)
+      records = connection.select_all(cached_sql)
       build_result_objects_from_rows(records)
     end
 
     def lazy_execute
       Enumerator.new do |yielder|
-        records = ActiveRecord::Base.connection.select_all(cached_sql)
+        records = connection.select_all(cached_sql)
         if @read_model_class
           build_read_models_enumerator(records, yielder)
         else
@@ -296,11 +296,13 @@ module SimpleQuery
       expressions
     end
 
-    def build_where_sql
-      condition = @wheres.to_arel
-      return "" unless condition
+    def connection
+      @model.connection
+    end
 
-      condition.to_sql
+    # Compiles with the model's own connection, inlining any bind values.
+    def compile_sql(arel)
+      connection.unprepared_statement { connection.to_sql(arel) }
     end
 
     def reset_query
@@ -322,7 +324,7 @@ module SimpleQuery
         @aggregations.aggregations
       ]
 
-      @query_cache[key] ||= build_query.to_sql
+      @query_cache[key] ||= compile_sql(build_query)
     end
 
     def build_result_objects_from_rows(records)

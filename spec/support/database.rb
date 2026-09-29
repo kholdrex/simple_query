@@ -5,14 +5,17 @@ host      = ENV["DB_HOST"]
 username  = ENV["DB_USER"]
 password  = ENV["DB_PASSWORD"]
 database  = ENV.fetch("DB_DATABASE", ":memory:")
+config    = { adapter: adapter, host: host, port: ENV["DB_PORT"], username: username, password: password }
 
-ActiveRecord::Base.establish_connection(
-  adapter: adapter,
-  host: host,
-  username: username,
-  password: password,
-  database: database
-)
+ActiveRecord::Base.establish_connection(config.merge(database: database))
+
+# Models on a second database check that queries use the model's connection, not ActiveRecord::Base's.
+class SecondaryRecord < ActiveRecord::Base
+  self.abstract_class = true
+end
+
+SecondaryRecord.establish_connection(config.merge(database: ENV.fetch("DB_SECONDARY_DATABASE", ":memory:")))
+SecondaryRecord.connection.create_table(:widgets, if_not_exists: true) { |t| t.string :name }
 
 ActiveRecord::Schema.define do
   create_table :users, if_not_exists: true do |t|
