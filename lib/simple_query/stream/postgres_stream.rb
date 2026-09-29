@@ -3,6 +3,8 @@
 module SimpleQuery
   module Stream
     module PostgresStream
+      PQTRANS_IDLE = 0 # PG::PQTRANS_IDLE
+
       # rubocop:disable Metrics/MethodLength
       def stream_each_postgres(batch_size, &block)
         validate_postgres_stream_batch_size!(batch_size)
@@ -12,13 +14,15 @@ module SimpleQuery
         conn = ActiveRecord::Base.connection.raw_connection
         cursor_name = "simple_query_cursor_#{object_id}"
 
+        # Cursors need a transaction. Reuse the caller's one instead of committing it.
+        own_transaction = conn.transaction_status == PQTRANS_IDLE
         cursor_declared = false
         cursor_close_started = false
+        completed = false
 
         begin
-          conn.exec("BEGIN")
-          declare_sql = "DECLARE #{cursor_name} NO SCROLL CURSOR FOR #{select_sql}"
-          conn.exec(declare_sql)
+          conn.exec("BEGIN") if own_transaction
+          conn.exec("DECLARE #{cursor_name} NO SCROLL CURSOR FOR #{select_sql}")
           cursor_declared = true
 
           loop do
@@ -33,11 +37,14 @@ module SimpleQuery
 
           cursor_close_started = true
           conn.exec("CLOSE #{cursor_name}")
-          conn.exec("COMMIT")
-        rescue StandardError
-          close_postgres_stream_cursor(conn, cursor_name) if cursor_declared && !cursor_close_started
-          rollback_postgres_stream_transaction(conn)
-          raise
+          conn.exec("COMMIT") if own_transaction
+          completed = true
+        ensure
+          # Also runs when the caller leaves the block early with break/return.
+          unless completed
+            abort_postgres_stream(conn, cursor_name, close_cursor: cursor_declared && !cursor_close_started,
+                                                     rollback: own_transaction)
+          end
         end
       end
       # rubocop:enable Metrics/MethodLength
@@ -48,6 +55,11 @@ module SimpleQuery
         return if batch_size.is_a?(Integer) && batch_size.positive?
 
         raise ArgumentError, "stream_each batch_size must be a positive Integer"
+      end
+
+      def abort_postgres_stream(conn, cursor_name, close_cursor:, rollback:)
+        close_postgres_stream_cursor(conn, cursor_name) if close_cursor
+        rollback_postgres_stream_transaction(conn) if rollback
       end
 
       def close_postgres_stream_cursor(conn, cursor_name)

@@ -6,6 +6,7 @@ All notable changes to this project are documented in this file.
 
 ### Breaking
 - `simple_scope` now validates positional argument counts before invoking scope bodies. Calls that previously relied on Ruby's lenient `Proc` argument handling now raise a named `ArgumentError` when too few or too many positional arguments are provided.
+- `bulk_update` now raises `ArgumentError` when the query has joins, `limit`/`offset`, or `group`/`having`. Previously these were silently dropped and the update hit every row matching the `where` conditions.
 
 ### Changed
 - ActiveRecord 8.0 is now included in the PostgreSQL/MySQL CI matrix on Ruby 3.2.
@@ -21,6 +22,11 @@ All notable changes to this project are documented in this file.
 - PostgreSQL `stream_each` now closes a declared cursor before rollback when row processing fails and attempts cursor cleanup before rollback on fetch failures.
 - Reusing a builder after changing the selected result shape now returns Struct rows with the correct members instead of reusing a stale Struct class.
 - Unsupported `stream_each` adapters now raise `SimpleQuery::UnsupportedAdapterError` with the adapter name instead of a generic runtime error.
+- Hash `where` conditions with array values now generate `IN (...)` instead of `= NULL`, which silently matched no rows. Range values generate `BETWEEN`. PostgreSQL array and range columns still compare by equality.
+- Chaining more than one raw SQL or placeholder `where` condition no longer raises `NoMethodError`; combined conditions are parenthesized.
+- `having` now accepts hash, placeholder, and raw string conditions like `where`.
+- PostgreSQL `stream_each` no longer commits the caller's open transaction. It only opens its own transaction when none is active.
+- PostgreSQL `stream_each` now closes its cursor and ends its own transaction when the caller leaves the block early with `break` or `return`.
 
 ## [0.5.0] - 2025-08-29
 

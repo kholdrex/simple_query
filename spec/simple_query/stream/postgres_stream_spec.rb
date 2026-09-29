@@ -26,6 +26,10 @@ RSpec.describe SimpleQuery::Stream::PostgresStream do
   let(:builder) { MockBuilderPostgres.new }
   let(:conn)    { double("raw_connection") }
 
+  before do
+    allow(conn).to receive(:transaction_status).and_return(0)
+  end
+
   describe "#stream_each_postgres" do
     it "declares a cursor, fetches rows in batches, and calls the block" do
       expect(conn).to receive(:exec).with("BEGIN").ordered
@@ -153,6 +157,57 @@ RSpec.describe SimpleQuery::Stream::PostgresStream do
       expect do
         builder.stream_each_postgres(100) { |_record| raise "consumer failed" }
       end.to raise_error("consumer failed")
+    end
+
+    it "reuses an open caller transaction instead of committing it" do
+      allow(conn).to receive(:transaction_status).and_return(2)
+      expect(conn).not_to receive(:exec).with("BEGIN")
+      expect(conn).not_to receive(:exec).with("COMMIT")
+      expect(conn).to receive(:exec).with(/DECLARE simple_query_cursor_\d+/).ordered
+      expect(conn).to receive(:exec).with(/FETCH 100/).ordered.and_return(double("PGResult", ntuples: 0))
+      expect(conn).to receive(:exec).with("CLOSE simple_query_cursor_#{builder.object_id}").ordered
+
+      allow(ActiveRecord::Base).to receive_message_chain(:connection, :raw_connection).and_return(conn)
+
+      builder.stream_each_postgres(100) { |_record| }
+    end
+
+    it "does not roll back a caller transaction when row processing fails" do
+      allow(conn).to receive(:transaction_status).and_return(2)
+      fetch_result = double("PGResult", ntuples: 1)
+      allow(fetch_result).to receive(:each).and_yield("row1")
+
+      expect(conn).to receive(:exec).with(/DECLARE simple_query_cursor_\d+/).ordered
+      expect(conn).to receive(:exec).with(/FETCH 100/).ordered.and_return(fetch_result)
+      expect(conn).to receive(:exec).with("CLOSE simple_query_cursor_#{builder.object_id}").ordered
+      expect(conn).not_to receive(:exec).with("ROLLBACK")
+
+      allow(ActiveRecord::Base).to receive_message_chain(:connection, :raw_connection).and_return(conn)
+
+      expect do
+        builder.stream_each_postgres(100) { |_record| raise "consumer failed" }
+      end.to raise_error("consumer failed")
+    end
+
+    it "closes the cursor and ends its transaction when the caller breaks out early" do
+      fetch_result = double("PGResult", ntuples: 2)
+      allow(fetch_result).to receive(:each).and_yield("row1").and_yield("row2")
+
+      expect(conn).to receive(:exec).with("BEGIN").ordered
+      expect(conn).to receive(:exec).with(/DECLARE simple_query_cursor_\d+/).ordered
+      expect(conn).to receive(:exec).with(/FETCH 100/).ordered.and_return(fetch_result)
+      expect(conn).to receive(:exec).with("CLOSE simple_query_cursor_#{builder.object_id}").ordered
+      expect(conn).to receive(:exec).with("ROLLBACK").ordered
+
+      allow(ActiveRecord::Base).to receive_message_chain(:connection, :raw_connection).and_return(conn)
+
+      rows = []
+      builder.stream_each_postgres(100) do |record|
+        rows << record
+        break
+      end
+
+      expect(rows.size).to eq(1)
     end
   end
 end

@@ -191,6 +191,8 @@ module SimpleQuery
     end
 
     def bulk_update(set:)
+      validate_bulk_update_scope!
+
       table_name = @arel_table.name
       set_sql = SetClause.new(set).to_sql
 
@@ -265,6 +267,16 @@ module SimpleQuery
       return if batch_size.is_a?(Integer) && batch_size.positive?
 
       raise ArgumentError, "stream_each batch_size must be a positive Integer"
+    end
+
+    def validate_bulk_update_scope!
+      unsupported = []
+      unsupported << "joins" if @joins.joins.any?
+      unsupported << "limit/offset" if @limits.limit_value || @limits.offset_value
+      unsupported << "group/having" if @group_having.group_fields.any? || @group_having.having_conditions.any?
+      return if unsupported.empty?
+
+      raise ArgumentError, "bulk_update only supports where conditions (found #{unsupported.join(", ")})"
     end
 
     def build_select_expressions
