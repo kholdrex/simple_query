@@ -11,7 +11,7 @@ module SimpleQuery
 
         select_sql = cached_sql
 
-        conn = ActiveRecord::Base.connection.raw_connection
+        conn = connection.raw_connection
         cursor_name = "simple_query_cursor_#{object_id}"
 
         # Cursors need a transaction. Reuse the caller's one instead of committing it.

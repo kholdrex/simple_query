@@ -235,6 +235,16 @@ RSpec.describe SimpleQuery::Builder do
       expect(result.map(&:name)).to contain_exactly("Jane Doe")
     end
 
+    it "inlines Arel.sql bind values and keeps their precedence", if: Arel.method(:sql).arity != 1 do
+      result = User.simple_query
+                   .select(:name)
+                   .where(email: "jane@example.com")
+                   .where(Arel.sql("users.name = ? OR users.name = ?", "Jane Doe", "John Smith"))
+                   .execute
+
+      expect(result.map(&:name)).to contain_exactly("Jane Doe")
+    end
+
     it "supports basic aggregations" do
       result = Company.simple_query
                       .select(Arel.sql("SUM(annual_revenue) as total_revenue"))
@@ -910,6 +920,14 @@ RSpec.describe SimpleQuery::Builder do
       it "closes the cursor when the caller breaks out early" do
         builder = User.simple_query.select(:name)
         2.times { builder.stream_each(batch_size: 1) { |_row| break } }
+
+        expect(User.simple_query.select(:name).execute.size).to eq(2)
+      end
+    end
+
+    context "with a real MySQL connection", if: ActiveRecord::Base.connection.adapter_name.match?(/mysql/i) do
+      it "leaves the connection usable when the caller breaks out early" do
+        User.simple_query.select(:name).stream_each { |_row| break }
 
         expect(User.simple_query.select(:name).execute.size).to eq(2)
       end

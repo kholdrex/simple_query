@@ -6,12 +6,17 @@ module SimpleQuery
       def stream_each_mysql(&block)
         select_sql = cached_sql
 
-        raw_conn = ActiveRecord::Base.connection.raw_connection
+        raw_conn = connection.raw_connection
 
         result = raw_conn.query(select_sql, stream: true, cache_rows: false, as: :hash)
-        result.each do |mysql_row|
-          record = build_row_object_mysql(mysql_row)
-          block.call(record)
+        begin
+          result.each do |mysql_row|
+            record = build_row_object_mysql(mysql_row)
+            block.call(record)
+          end
+        ensure
+          # Discards unread rows so the connection can run the next query after an error or break.
+          result.free
         end
       end
 

@@ -76,6 +76,7 @@ jobs:
       - name: Create test DB (Postgres)
         run: |
           psql -h localhost -U postgres -c "CREATE DATABASE simple_query_test;" || true
+          PGPASSWORD=secret psql -h localhost -U postgres -c "CREATE DATABASE simple_query_secondary_test;"
 
       - name: Prepare DB env (Postgres)
         run: |
@@ -84,6 +85,7 @@ jobs:
           echo "DB_USER=postgres" >> $GITHUB_ENV
           echo "DB_PASSWORD=secret" >> $GITHUB_ENV
           echo "DB_DATABASE=simple_query_test" >> $GITHUB_ENV
+          echo "DB_SECONDARY_DATABASE=simple_query_secondary_test" >> $GITHUB_ENV
 
       - name: Run tests
         run: bundle exec rspec
@@ -157,6 +159,7 @@ jobs:
       - name: Create test DB (MySQL)
         run: |
           mysql -h 127.0.0.1 -uroot -psecret -e "CREATE DATABASE IF NOT EXISTS simple_query_test"
+          mysql -h 127.0.0.1 -uroot -psecret -e "CREATE DATABASE IF NOT EXISTS simple_query_secondary_test"
 
       - name: Prepare DB env (MySQL)
         run: |
@@ -165,6 +168,7 @@ jobs:
           echo "DB_USER=root" >> $GITHUB_ENV
           echo "DB_PASSWORD=secret" >> $GITHUB_ENV
           echo "DB_DATABASE=simple_query_test" >> $GITHUB_ENV
+          echo "DB_SECONDARY_DATABASE=simple_query_secondary_test" >> $GITHUB_ENV
 
       - name: Run tests
         run: bundle exec rspec
