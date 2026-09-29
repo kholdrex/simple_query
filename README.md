@@ -45,11 +45,11 @@ gem install simple_query
 SimpleQuery currently declares support for:
 
 - Ruby `>= 2.7`
-- ActiveRecord `>= 7.0`, `< 8.1`
+- ActiveRecord `>= 7.0`, `< 8.2`
 
 Queries run on the model's own connection, so models that use `connects_to` or `establish_connection` for another database work as expected.
 
-The CI matrix covers ActiveRecord 7.0, 7.1, 7.2, and 8.0 across PostgreSQL and MySQL. ActiveRecord 7.0 is covered through Ruby 3.2; ActiveRecord 8.0 requires Ruby 3.2 or newer; otherwise each Ruby is exercised on the ActiveRecord versions that support it.
+The CI matrix covers ActiveRecord 7.0, 7.1, 7.2, 8.0, and 8.1 across PostgreSQL and MySQL. ActiveRecord 7.0 is covered through Ruby 3.2; ActiveRecord 8.0 and 8.1 require Ruby 3.2 or newer; otherwise each Ruby is exercised on the ActiveRecord versions that support it.
 
 ## Configuration
 

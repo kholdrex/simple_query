@@ -3,7 +3,9 @@
 source "https://rubygems.org"
 gemspec
 
-gem "activerecord", "~> 7.0"
+gem "activerecord", "~> 7.0.0"
+# ActiveRecord 7.0 breaks with concurrent-ruby 1.3.5+ (missing require "logger").
+gem "concurrent-ruby", "< 1.3.5"
 gem "memory_profiler"
 gem "mysql2", "~> 0.5.2"
 gem "pg", "~> 1.5.0", ">= 1.5.6"
