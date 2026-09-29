@@ -172,7 +172,8 @@ module SimpleQuery
     # Method to get last/bottom record by column
     def last_by(column, alias_name: nil)
       alias_name ||= "last_#{column}"
-      custom_aggregation("LAST_VALUE(#{resolve_column_name(column)}) OVER (ORDER BY #{resolve_column_name(column)})",
+      custom_aggregation("LAST_VALUE(#{resolve_column_name(column)}) OVER (ORDER BY #{resolve_column_name(column)} " \
+                         "ROWS BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING)",
                          alias_name)
     end
 

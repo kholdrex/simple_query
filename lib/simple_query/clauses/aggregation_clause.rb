@@ -92,15 +92,17 @@ module SimpleQuery
       alias_name ||= "group_concat_#{sanitize_alias(column)}"
 
       # Use database-specific group concatenation
-      adapter = @model.connection.adapter_name.downcase
+      connection = @model.connection
+      adapter = connection.adapter_name.downcase
+      quoted_separator = connection.quote(separator.to_s)
 
       expression = case adapter
                    when /mysql/
-                     "GROUP_CONCAT(#{column_expr} SEPARATOR '#{separator}')"
+                     "GROUP_CONCAT(#{column_expr} SEPARATOR #{quoted_separator})"
                    when /postgres/
-                     "STRING_AGG(#{column_expr}::text, '#{separator}')"
+                     "STRING_AGG(#{column_expr}::text, #{quoted_separator})"
                    when /sqlite/
-                     "GROUP_CONCAT(#{column_expr}, '#{separator}')"
+                     "GROUP_CONCAT(#{column_expr}, #{quoted_separator})"
                    else
                      # Fallback for other databases
                      "GROUP_CONCAT(#{column_expr})"

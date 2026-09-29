@@ -520,6 +520,23 @@ RSpec.describe SimpleQuery::Builder do
     end
   end
 
+  describe "window helpers" do
+    it "returns the first and last value over the whole result on every row" do
+      result = Company.simple_query.select(:name).first_by(:founded_year).last_by(:founded_year).execute
+
+      expect(result.map { |row| [row.first_founded_year.to_i, row.last_founded_year.to_i] })
+        .to eq([[2010, 2015], [2010, 2015]])
+    end
+  end
+
+  describe "#group_concat" do
+    it "quotes the separator" do
+      result = User.simple_query.group_concat(:name, separator: "'").execute
+
+      expect(result.first.group_concat_name.split("'")).to contain_exactly("Jane Doe", "John Smith")
+    end
+  end
+
   describe "#lazy_execute" do
     it "supports lazy execution" do
       lazy_result = User.simple_query

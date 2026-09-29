@@ -10,7 +10,8 @@ All notable changes to this project are documented in this file.
 
 ### Changed
 - ActiveRecord 8.0 is now included in the PostgreSQL/MySQL CI matrix on Ruby 3.2.
-- ActiveRecord dependency bounds now allow the full 8.0 patch line while excluding 8.1 until it is tested.
+- ActiveRecord 8.1 is now supported and tested in CI on Ruby 3.2+.
+- CI Gemfiles pin each ActiveRecord minor version, so every matrix job tests the version it is named after.
 - `simple_scope` now rejects invalid scope bodies at definition time.
 - README safety guidance now gives explicit allowlist and placeholder examples for trusted SQL fragment escape hatches.
 - README safety guidance now clarifies `LIKE` placeholder quoting, with specs documenting trusted raw `where` strings as escape hatches.
@@ -31,6 +32,8 @@ All notable changes to this project are documented in this file.
 - `Arel.sql` conditions with bind values (ActiveRecord 7.1+) now have their values inlined instead of sending unbound placeholders.
 - MySQL `stream_each` now frees the streaming result when the block raises or the caller breaks out early, so the connection can run the next query.
 - `bulk_update` now quotes the table name.
+- `last_by` now returns the last value over the whole result instead of the current row's value.
+- `group_concat` now quotes the separator.
 
 ## [0.5.0] - 2025-08-29
 
