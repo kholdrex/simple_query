@@ -4,6 +4,7 @@ source "https://rubygems.org"
 gemspec
 
 gem "activerecord", "~> 8.0.0"
+gem "benchmark"
 gem "memory_profiler"
 gem "mysql2", "~> 0.5.2"
 gem "pg", "~> 1.5.0", ">= 1.5.6"

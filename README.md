@@ -44,12 +44,14 @@ gem install simple_query
 
 SimpleQuery currently declares support for:
 
-- Ruby `>= 2.7`
-- ActiveRecord `>= 7.0`, `< 8.2`
+- Ruby `>= 3.2`
+- ActiveRecord `>= 7.2`, `< 8.2`
+
+SimpleQuery 0.6.0 is the last release that supports Ruby 2.7–3.1 and ActiveRecord 7.0–7.1.
 
 Queries run on the model's own connection, so models that use `connects_to` or `establish_connection` for another database work as expected.
 
-The CI matrix covers ActiveRecord 7.0, 7.1, 7.2, 8.0, and 8.1 across PostgreSQL and MySQL. ActiveRecord 7.0 is covered through Ruby 3.2; ActiveRecord 8.0 and 8.1 require Ruby 3.2 or newer; otherwise each Ruby is exercised on the ActiveRecord versions that support it.
+The CI matrix covers Ruby 3.2, 3.3, 3.4, and 4.0 with ActiveRecord 7.2, 8.0, and 8.1 on PostgreSQL and MySQL.
 
 ## Configuration
 
@@ -568,7 +570,7 @@ bundle exec rspec
 bundle exec rubocop
 ```
 
-Specs use in-memory SQLite by default, which needs Ruby 3.2 or newer. On older Rubies, or to test against a real server, set `DB_ADAPTER` (`postgresql` or `mysql2`) and the `DB_HOST`, `DB_USER`, `DB_PASSWORD`, `DB_DATABASE`, and `DB_SECONDARY_DATABASE` variables from `spec/support/database.rb` (the second database must already exist). Database-sensitive behavior is tested against PostgreSQL and MySQL in CI.
+Specs use in-memory SQLite by default. To test against a real server, set `DB_ADAPTER` (`postgresql` or `mysql2`) and the `DB_HOST`, `DB_USER`, `DB_PASSWORD`, `DB_DATABASE`, and `DB_SECONDARY_DATABASE` variables from `spec/support/database.rb` (the second database must already exist). Database-sensitive behavior is tested against PostgreSQL and MySQL in CI.
 
 You can also open a console:
 

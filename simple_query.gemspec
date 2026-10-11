@@ -12,7 +12,7 @@ Gem::Specification.new do |spec|
   spec.description   = "SimpleQuery provides a flexible and performant way to construct complex database queries in Ruby on Rails applications. It offers an intuitive interface for building queries with joins, conditions, and aggregations, while potentially outperforming standard ActiveRecord queries on large datasets."
   spec.homepage      = "https://github.com/kholdrex/simple_query"
   spec.license       = "MIT"
-  spec.required_ruby_version = ">= 2.7.0"
+  spec.required_ruby_version = ">= 3.2.0"
 
   spec.metadata = {
     "homepage_uri" => spec.homepage,
@@ -23,5 +23,5 @@ Gem::Specification.new do |spec|
   spec.files         = Dir["lib/**/*", "LICENSE.txt", "README.md"]
   spec.require_paths = ["lib"]
 
-  spec.add_dependency "activerecord", ">= 7.0", "< 8.2"
+  spec.add_dependency "activerecord", ">= 7.2", "< 8.2"
 end
