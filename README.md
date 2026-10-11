@@ -568,7 +568,7 @@ bundle exec rspec
 bundle exec rubocop
 ```
 
-Database-sensitive behavior is tested against PostgreSQL and MySQL in CI.
+Specs use in-memory SQLite by default, which needs Ruby 3.2 or newer. On older Rubies, or to test against a real server, set `DB_ADAPTER` (`postgresql` or `mysql2`) and the `DB_HOST`, `DB_USER`, `DB_PASSWORD`, `DB_DATABASE`, and `DB_SECONDARY_DATABASE` variables from `spec/support/database.rb` (the second database must already exist). Database-sensitive behavior is tested against PostgreSQL and MySQL in CI.
 
 You can also open a console:
 

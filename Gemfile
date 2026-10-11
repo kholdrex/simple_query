@@ -10,11 +10,13 @@ group :test do
 
   if Gem::Version.new(RUBY_VERSION) >= Gem::Version.new("3.1.0")
     gem "memory_profiler", "~> 1.1"
-    gem "sqlite3", "~> 2.1"
   else
     gem "memory_profiler", "~> 1.0.2"
-    gem "sqlite3", "~> 1.5"
   end
+
+  # sqlite3 2.9.5+ fixes a use-after-free and needs Ruby 3.2. On older Rubies,
+  # run the specs against PostgreSQL or MySQL (DB_ADAPTER=...), as CI does.
+  gem "sqlite3", "~> 2.9", ">= 2.9.5" if Gem::Version.new(RUBY_VERSION) >= Gem::Version.new("3.2.0")
 end
 
 group :development, :test do
