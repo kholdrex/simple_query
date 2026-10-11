@@ -2,6 +2,15 @@
 
 All notable changes to this project are documented in this file.
 
+## Unreleased
+
+### Breaking
+- Requires Ruby 3.2+ and ActiveRecord 7.2+. Ruby 2.7–3.1 and ActiveRecord 7.0–7.1 are end-of-life; 0.6.0 is the last release that supports them.
+
+### Changed
+- CI now tests Ruby 3.2, 3.3, 3.4, and 4.0 with ActiveRecord 7.2, 8.0, and 8.1.
+- Local development requires sqlite3 2.9.5+, which fixes a use-after-free.
+
 ## [0.6.0] - 2026-09-29
 
 ### Breaking

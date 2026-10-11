@@ -1,7 +1,6 @@
 # frozen_string_literal: true
 
 require "spec_helper"
-require "benchmark"
 
 RSpec.describe SimpleQuery::Builder do
   let(:query_object) { described_class.new(User) }
